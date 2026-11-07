@@ -1,0 +1,1783 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080607">
+  <title>Dead Air — Room 01</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #080607;
+      color: #e6ddd3;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: #080607; }
+
+    #game { position: fixed; inset: 0; }
+    #game canvas { display: block; width: 100%; height: 100%; }
+
+    .grain {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      opacity: .2;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+      mix-blend-mode: soft-light;
+    }
+
+    .topbar {
+      position: fixed;
+      z-index: 3;
+      inset: 28px 34px auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-size: 10px;
+      color: rgba(230, 221, 211, .62);
+    }
+
+    .brand { display: grid; gap: 7px; }
+    .brand strong { color: #e6ddd3; font-size: 12px; letter-spacing: .25em; font-weight: 600; }
+    .crosshair {
+      position: fixed;
+      z-index: 3;
+      top: 50%;
+      left: 50%;
+      width: 18px;
+      height: 18px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: .74;
+    }
+
+    .crosshair::before, .crosshair::after {
+      content: "";
+      position: absolute;
+      background: #d7c6ba;
+      box-shadow: 0 0 7px rgba(194, 66, 52, .45);
+    }
+
+    .crosshair::before { width: 1px; height: 18px; left: 8px; }
+    .crosshair::after { width: 18px; height: 1px; top: 8px; }
+
+    .bottom-note {
+      position: fixed;
+      z-index: 3;
+      inset: auto 34px 26px auto;
+      pointer-events: none;
+    }
+
+    .world-prompt {
+      position: fixed;
+      z-index: 3;
+      inset: auto 0 34px;
+      width: max-content;
+      max-width: calc(100vw - 36px);
+      margin: 0 auto;
+      padding: 11px 16px;
+      border: 1px solid rgba(215, 196, 184, .2);
+      background: rgba(8, 7, 8, .78);
+      color: rgba(230, 221, 211, .82);
+      font-size: 10px;
+      letter-spacing: .14em;
+      text-align: center;
+      text-transform: uppercase;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+    }
+
+    .world-prompt[hidden] { display: none; }
+
+    kbd {
+      padding: 4px 7px;
+      border: 1px solid rgba(215, 196, 184, .23);
+      border-radius: 3px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .025));
+      box-shadow: 0 2px 0 rgba(0, 0, 0, .45), inset 0 1px rgba(255, 255, 255, .055);
+      color: #eee2d8;
+      font: inherit;
+    }
+
+    .screen {
+      position: fixed;
+      z-index: 5;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        repeating-linear-gradient(0deg, rgba(230, 221, 211, .018) 0, rgba(230, 221, 211, .018) 1px, transparent 1px, transparent 4px),
+        radial-gradient(ellipse at 50% 48%, rgba(66, 22, 21, .28), transparent 38%),
+        radial-gradient(ellipse at 50% 43%, rgba(12, 12, 14, .72), rgba(5, 5, 7, .88) 76%),
+        #080607;
+      transition: opacity .45s ease, visibility .45s ease;
+    }
+
+    .screen::before, .screen::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .screen::before {
+      inset: 18px;
+      border: 1px solid rgba(143, 56, 49, .15);
+      box-shadow: inset 0 0 100px rgba(81, 19, 21, .08);
+    }
+
+    .screen::after {
+      width: min(58vw, 520px);
+      height: 1px;
+      top: 50%;
+      background: linear-gradient(90deg, transparent, rgba(152, 47, 42, .25), transparent);
+      transform: rotate(-28deg);
+      filter: blur(1px);
+    }
+
+    .screen.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .intro {
+      position: relative;
+      z-index: 1;
+      width: min(560px, 100%);
+      padding: 38px 28px 30px;
+      border: 1px solid rgba(156, 66, 57, .22);
+      background: linear-gradient(145deg, rgba(18, 14, 15, .76), rgba(7, 7, 9, .58));
+      box-shadow: 0 24px 100px rgba(0, 0, 0, .55), inset 0 0 48px rgba(102, 27, 24, .08);
+      text-align: center;
+    }
+    .intro::before, .intro::after {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-color: rgba(190, 96, 79, .72);
+      border-style: solid;
+      content: "";
+      pointer-events: none;
+    }
+    .intro::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+    .intro::after { right: -1px; bottom: -1px; border-width: 0 1px 1px 0; }
+    .audio-credit { margin-top: 18px; color: rgba(230, 221, 211, .42); font-size: 9px; letter-spacing: .08em; }
+    .audio-credit a { color: rgba(230, 221, 211, .58); }
+    .eyebrow { color: #c17a6b; font-size: 10px; letter-spacing: .42em; text-transform: uppercase; }
+    h1 {
+      position: relative;
+      margin: 24px 0 14px;
+      color: #e8dfd7;
+      font-size: clamp(52px, 10vw, 94px);
+      line-height: .86;
+      letter-spacing: .17em;
+      font-weight: 300;
+      text-shadow: 2px 0 rgba(155, 44, 41, .3), -2px 0 rgba(112, 145, 153, .15), 0 0 48px rgba(137, 38, 35, .34);
+    }
+    .subtitle { margin: 0; color: rgba(230, 221, 211, .58); font-size: 10px; letter-spacing: .24em; text-transform: uppercase; }
+    .signal-readout {
+      display: flex;
+      width: min(300px, 90%);
+      margin: 22px auto 0;
+      align-items: center;
+      justify-content: space-between;
+      color: rgba(203, 117, 101, .8);
+      font-size: 8px;
+      letter-spacing: .2em;
+    }
+    .signal-readout span:first-child::before {
+      display: inline-block;
+      width: 5px;
+      height: 5px;
+      margin: 0 8px 1px 0;
+      border-radius: 50%;
+      background: #ad4037;
+      box-shadow: 0 0 9px #ad4037;
+      content: "";
+      animation: signal 3s ease-in-out infinite;
+    }
+    .frequency { display: flex; height: 14px; gap: 3px; align-items: center; }
+    .frequency i { display: block; width: 2px; height: 5px; background: rgba(203, 117, 101, .7); }
+    .frequency i:nth-child(3n) { height: 11px; }
+    .frequency i:nth-child(4n) { height: 8px; }
+    .rule { width: 42px; height: 1px; margin: 22px auto; background: rgba(170, 72, 60, .75); box-shadow: 0 0 12px rgba(170, 72, 60, .4); }
+    .description { max-width: 340px; margin: 0 auto; color: rgba(230, 221, 211, .72); font-size: 14px; line-height: 1.8; }
+    #enter {
+      margin-top: 24px;
+      padding: 15px 34px;
+      border: 1px solid rgba(161, 75, 64, .72);
+      background: linear-gradient(110deg, rgba(116, 35, 32, .22), rgba(116, 35, 32, .08));
+      color: #e6ddd3;
+      cursor: pointer;
+      font: inherit;
+      font-size: 10px;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      transition: background .2s, color .2s;
+      box-shadow: inset 0 0 18px rgba(127, 35, 31, .12), 0 0 18px rgba(127, 35, 31, .08);
+    }
+
+    #enter:hover { background: #8f3831; color: #fff3e9; }
+    #enter:disabled { opacity: .48; cursor: wait; }
+    #enter:focus-visible { outline: 2px solid #d18a78; outline-offset: 4px; }
+    .loading { margin-top: 15px; color: rgba(230, 221, 211, .38); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; }
+
+    .settings-screen {
+      z-index: 7;
+      background:
+        repeating-linear-gradient(0deg, rgba(230, 221, 211, .018) 0, rgba(230, 221, 211, .018) 1px, transparent 1px, transparent 4px),
+        radial-gradient(ellipse at 50% 48%, rgba(66, 22, 21, .3), transparent 58%),
+        rgba(5, 5, 7, .94);
+    }
+
+    .settings-panel {
+      position: relative;
+      z-index: 1;
+      width: min(760px, 100%);
+      max-height: min(650px, 100%);
+      overflow: auto;
+      padding: 28px;
+      border: 1px solid rgba(156, 66, 57, .34);
+      background: linear-gradient(145deg, rgba(18, 14, 15, .97), rgba(7, 7, 9, .97));
+      box-shadow: 0 24px 100px rgba(0, 0, 0, .7), inset 0 0 48px rgba(102, 27, 24, .08);
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(230, 221, 211, .1);
+    }
+
+    .settings-header h2 {
+      margin: 8px 0 0;
+      color: #e8dfd7;
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .settings-close {
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(215, 196, 184, .2);
+      background: transparent;
+      color: #e6ddd3;
+      cursor: pointer;
+      font: inherit;
+      font-size: 22px;
+    }
+
+    .settings-layout { display: grid; grid-template-columns: 180px minmax(0, 1fr); min-height: 310px; }
+    .settings-tabs { display: flex; flex-direction: column; gap: 6px; padding: 22px 18px 22px 0; border-right: 1px solid rgba(230, 221, 211, .1); }
+    .settings-tab {
+      padding: 12px 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: rgba(230, 221, 211, .55);
+      cursor: pointer;
+      font: inherit;
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-align: left;
+      text-transform: uppercase;
+    }
+
+    .settings-tab[aria-selected="true"] { border-color: rgba(161, 75, 64, .4); background: rgba(116, 35, 32, .16); color: #e6ddd3; }
+    .settings-content { padding: 16px 0 16px 24px; }
+    .settings-content h3 { margin: 0 0 5px; color: #e6ddd3; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; }
+    .settings-hint { margin: 0 0 18px; color: rgba(230, 221, 211, .42); font-size: 11px; line-height: 1.6; }
+    .function-list { display: grid; grid-template-columns: 1fr auto; margin: 0; }
+    .function-list dt, .function-list dd { margin: 0; padding: 10px 0; border-top: 1px solid rgba(230, 221, 211, .08); font-size: 12px; }
+    .function-list dt { color: rgba(230, 221, 211, .72); }
+    .function-list dd { display: flex; gap: 5px; justify-content: flex-end; color: #e6ddd3; }
+    .function-list kbd { min-width: 25px; padding: 3px 6px; text-align: center; }
+    .setting-row { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid rgba(230, 221, 211, .08); }
+    .setting-label { color: rgba(230, 221, 211, .82); font-size: 12px; }
+    .setting-description { display: block; margin-top: 4px; color: rgba(230, 221, 211, .38); font-size: 10px; }
+    .setting-toggle {
+      position: relative;
+      flex: 0 0 42px;
+      height: 22px;
+      border: 1px solid rgba(215, 196, 184, .25);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .04);
+      cursor: pointer;
+    }
+
+    .setting-toggle::after {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(230, 221, 211, .45);
+      content: "";
+      transition: transform .18s, background .18s;
+    }
+
+    .setting-toggle[aria-pressed="true"] { border-color: rgba(161, 75, 64, .75); background: rgba(116, 35, 32, .3); }
+    .setting-toggle[aria-pressed="true"]::after { transform: translateX(19px); background: #d18a78; }
+    .setting-toggle:focus-visible, .settings-close:focus-visible, .settings-tab:focus-visible, .settings-done:focus-visible, .setting-range:focus-visible { outline: 2px solid #d18a78; outline-offset: 3px; }
+    .setting-range-wrap { display: flex; min-width: 180px; align-items: center; gap: 12px; }
+    .setting-range { width: 130px; accent-color: #a94b40; cursor: pointer; }
+    .setting-value { min-width: 38px; color: #d18a78; font-size: 10px; text-align: right; }
+    .settings-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid rgba(230, 221, 211, .1); color: rgba(230, 221, 211, .42); font-size: 9px; letter-spacing: .08em; }
+    .settings-done { padding: 10px 16px; border: 1px solid rgba(161, 75, 64, .6); background: rgba(116, 35, 32, .15); color: #e6ddd3; cursor: pointer; font: inherit; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; }
+    .grain.is-disabled { opacity: 0; }
+
+    @keyframes signal {
+      0%, 88%, 100% { opacity: .85; }
+      90% { opacity: .22; }
+      94% { opacity: .72; }
+      96% { opacity: .3; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .screen, #enter { transition: none; }
+    }
+
+    @media (max-width: 600px) {
+      .topbar { inset: 20px 18px auto; }
+      .bottom-note { inset: auto 18px 18px auto; }
+      .description { font-size: 13px; }
+      .intro { padding: 34px 18px 26px; }
+      .subtitle { font-size: 8px; line-height: 1.8; }
+      .eyebrow { font-size: 8px; }
+      .settings-panel { padding: 20px 16px; }
+      .settings-layout { grid-template-columns: 1fr; }
+      .settings-tabs { flex-direction: row; padding: 14px 0; border-right: 0; border-bottom: 1px solid rgba(230, 221, 211, .1); }
+      .settings-tab { flex: 1; padding: 10px 6px; text-align: center; }
+      .settings-content { padding: 18px 0; }
+      .setting-range-wrap { min-width: 145px; }
+      .setting-range { width: 95px; }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="game" aria-label="Holloway County Radio broadcast room"></main>
+  <div class="grain" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand"><strong>DEAD AIR</strong><span>Holloway County / FM 88.4</span></div>
+  </header>
+  <div class="crosshair" aria-hidden="true"></div>
+  <div class="world-prompt" id="world-prompt" role="status" aria-live="polite" hidden></div>
+  <footer class="bottom-note">
+    <span id="settings-shortcut-hint"></span>
+  </footer>
+
+  <section class="screen" id="start-screen">
+    <div class="intro">
+      <div class="eyebrow">Holloway County Radio</div>
+      <h1>DEAD<br>AIR</h1>
+      <p class="subtitle">Broadcast room / 88.4 FM</p>
+      <div class="signal-readout" aria-hidden="true">
+        <span>88.4 FM</span>
+        <span class="frequency"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <span>88.4 MHz</span>
+      </div>
+      <div class="rule"></div>
+      <p class="description">Holloway County Radio</p>
+      <button id="enter" type="button" disabled>Enter room</button>
+      <div class="audio-credit">Music: <a href="https://opengameart.org/content/ambient-horror" target="_blank" rel="noreferrer">Ambient Horror</a> by OpenGameArt.org (CC0)</div>
+      <div class="loading" id="loading">Preparing the room…</div>
+    </div>
+  </section>
+  <section class="screen settings-screen is-hidden" id="settings-screen" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="settings-panel">
+      <header class="settings-header">
+        <div>
+          <div class="eyebrow">System / Configuration</div>
+          <h2 id="settings-title">Settings</h2>
+        </div>
+        <button class="settings-close" id="settings-close" type="button" aria-label="Close settings">×</button>
+      </header>
+      <div class="settings-layout">
+        <nav class="settings-tabs" role="tablist" aria-label="Settings categories">
+          <button class="settings-tab" id="tab-functions" type="button" role="tab" aria-selected="true" aria-controls="panel-functions">Key functions</button>
+          <button class="settings-tab" id="tab-game" type="button" role="tab" aria-selected="false" aria-controls="panel-game" tabindex="-1">Game settings</button>
+        </nav>
+        <div class="settings-content">
+          <section id="panel-functions" role="tabpanel" aria-labelledby="tab-functions">
+            <h3>Key functions</h3>
+            <p class="settings-hint">The controls used to navigate the broadcast room.</p>
+            <dl class="function-list">
+              <dt>Move</dt><dd data-key-mapping="movement"></dd>
+              <dt>Look around</dt><dd><kbd>Mouse</kbd></dd>
+              <dt>Use room controls</dt><dd data-key-mapping="interact"></dd>
+              <dt>Toggle torch</dt><dd data-key-mapping="torch"></dd>
+              <dt>Crouch</dt><dd data-key-mapping="crouch"></dd>
+              <dt>Cycle zoom</dt><dd data-key-mapping="zoom"></dd>
+              <dt>Open / close settings</dt><dd data-key-mapping="settings"></dd>
+            </dl>
+          </section>
+          <section id="panel-game" role="tabpanel" aria-labelledby="tab-game" hidden>
+            <h3>Game settings</h3>
+            <p class="settings-hint">Adjust the room’s visual effects and feel.</p>
+            <div class="setting-row">
+              <div class="setting-label">Performance mode<span class="setting-description">Lower rendering cost by reducing visual effects</span></div>
+              <button class="setting-toggle" type="button" data-setting="performance" aria-label="Performance mode" aria-pressed="false"></button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">Surface shaders<span class="setting-description">Procedural detail on room surfaces</span></div>
+              <button class="setting-toggle" type="button" data-setting="shaders" aria-label="Surface shaders" aria-pressed="true"></button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">Shadows<span class="setting-description">Dynamic light and object shadows</span></div>
+              <button class="setting-toggle" type="button" data-setting="shadows" aria-label="Shadows" aria-pressed="true"></button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">Fog<span class="setting-description">Atmospheric depth in the room</span></div>
+              <button class="setting-toggle" type="button" data-setting="fog" aria-label="Fog" aria-pressed="true"></button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">Film grain<span class="setting-description">Subtle screen texture</span></div>
+              <button class="setting-toggle" type="button" data-setting="grain" aria-label="Film grain" aria-pressed="true"></button>
+            </div>
+            <div class="setting-row">
+              <label class="setting-label" for="sensitivity">Mouse sensitivity<span class="setting-description">Look speed multiplier</span></label>
+              <div class="setting-range-wrap">
+                <input class="setting-range" id="sensitivity" type="range" min="0.5" max="2" step="0.1" value="1">
+                <output class="setting-value" id="sensitivity-value" for="sensitivity">1.0×</output>
+              </div>
+            </div>
+            <div class="setting-row">
+              <label class="setting-label" for="volume">Ambience volume<span class="setting-description">Background audio level</span></label>
+              <div class="setting-range-wrap">
+                <input class="setting-range" id="volume" type="range" min="0" max="100" step="1" value="24">
+                <output class="setting-value" id="volume-value" for="volume">24%</output>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <footer class="settings-footer">
+        <span id="settings-close-hint"></span>
+        <button class="settings-done" id="settings-done" type="button">Return to room</button>
+      </footer>
+    </div>
+  </section>
+  <audio id="ambience" loop preload="auto"></audio>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import { CONFIG } from "./config.js";
+
+    const mount = document.querySelector("#game");
+    const startScreen = document.querySelector("#start-screen");
+    const enterButton = document.querySelector("#enter");
+    const loadingLabel = document.querySelector("#loading");
+    const ambience = document.querySelector("#ambience");
+    const settingsScreen = document.querySelector("#settings-screen");
+    const settingsCloseButton = document.querySelector("#settings-close");
+    const settingsDoneButton = document.querySelector("#settings-done");
+    const settingsTabs = [...document.querySelectorAll(".settings-tab")];
+    const settingsPanels = [...document.querySelectorAll('[role="tabpanel"]')];
+    const grainOverlay = document.querySelector(".grain");
+    const worldPrompt = document.querySelector("#world-prompt");
+    const sensitivityInput = document.querySelector("#sensitivity");
+    const sensitivityValue = document.querySelector("#sensitivity-value");
+    const volumeInput = document.querySelector("#volume");
+    const volumeValue = document.querySelector("#volume-value");
+    const controls = CONFIG.controls;
+    const keyLabel = (code) => {
+      if (code.startsWith("Key")) return code.slice(3);
+      if (code.startsWith("Arrow")) return code.slice(5);
+      if (code === "Escape") return "Esc";
+      if (code === "ShiftLeft" || code === "ShiftRight") return "Shift";
+      return code;
+    };
+    const appendKeyLabels = (element, codes) => {
+      for (const label of new Set(codes.map(keyLabel))) {
+        const key = document.createElement("kbd");
+        key.textContent = label;
+        element.appendChild(key);
+      }
+    };
+    const movementKeys = Object.values(controls.movement);
+    appendKeyLabels(document.querySelector('[data-key-mapping="movement"]'), movementKeys.map(([key]) => key));
+    const movementAlternates = movementKeys.map(([, key]) => key).filter(Boolean);
+    if (movementAlternates.length) {
+      const alternateLabel = document.createElement("span");
+      alternateLabel.textContent = "or";
+      document.querySelector('[data-key-mapping="movement"]').appendChild(alternateLabel);
+      appendKeyLabels(document.querySelector('[data-key-mapping="movement"]'), movementAlternates);
+    }
+    for (const controlName of ["interact", "torch", "crouch", "zoom", "settings"]) {
+      appendKeyLabels(document.querySelector(`[data-key-mapping="${controlName}"]`), controls[controlName]);
+    }
+    const settingsShortcutHint = document.querySelector("#settings-shortcut-hint");
+    settingsShortcutHint.textContent = "Press ";
+    appendKeyLabels(settingsShortcutHint, controls.settings);
+    settingsShortcutHint.append(" to open settings");
+    const settingsCloseHint = document.querySelector("#settings-close-hint");
+    appendKeyLabels(settingsCloseHint, controls.settings);
+    if (controls.closeSettings.length) {
+      settingsCloseHint.append(" or ");
+      appendKeyLabels(settingsCloseHint, controls.closeSettings);
+    }
+    settingsCloseHint.append(" to close");
+
+    document.title = CONFIG.game.pageTitle;
+    mount.setAttribute("aria-label", `${CONFIG.station.name} broadcast room`);
+    document.querySelector(".brand strong").textContent = CONFIG.game.name;
+    document.querySelector(".brand span").textContent = `${CONFIG.station.location} / FM ${CONFIG.station.frequency}`;
+    document.querySelector(".eyebrow").textContent = CONFIG.intro.eyebrow;
+    const gameTitle = document.querySelector(".intro h1");
+    gameTitle.replaceChildren(...CONFIG.game.nameLines.flatMap((line, index) => (
+      index === 0 ? [document.createTextNode(line)] : [document.createElement("br"), document.createTextNode(line)]
+    )));
+    document.querySelector(".subtitle").textContent = `${CONFIG.station.roomName} / ${CONFIG.station.frequency} FM`;
+    document.querySelector(".signal-readout span:first-child").textContent = `${CONFIG.station.frequency} FM`;
+    document.querySelector(".signal-readout span:last-child").textContent = `${CONFIG.station.frequency} MHz`;
+    document.querySelector(".description").textContent = CONFIG.intro.description;
+    enterButton.textContent = CONFIG.intro.enterLabel;
+    loadingLabel.textContent = CONFIG.intro.loadingLabel;
+    const audioCredit = document.querySelector(".audio-credit");
+    const audioCreditLink = audioCredit.querySelector("a");
+    audioCreditLink.textContent = CONFIG.audio.creditName;
+    audioCreditLink.href = CONFIG.audio.creditUrl;
+    audioCredit.lastChild.textContent = ` ${CONFIG.audio.creditLicense}`;
+    ambience.src = CONFIG.audio.source;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(CONFIG.scene.backgroundColor);
+    const roomFog = new THREE.FogExp2(CONFIG.scene.backgroundColor, CONFIG.scene.fogDensity);
+    scene.fog = roomFog;
+
+    const camera = new THREE.PerspectiveCamera(
+      CONFIG.scene.camera.fieldOfView,
+      innerWidth / innerHeight,
+      CONFIG.scene.camera.near,
+      CONFIG.scene.camera.far
+    );
+    camera.position.fromArray(CONFIG.scene.camera.position);
+    const outdoorLayer = 1;
+    camera.layers.enable(outdoorLayer);
+    const markAsOutdoor = (object) => {
+      object.layers.set(outdoorLayer);
+      return object;
+    };
+    const graphicsSettings = {
+      performance: false,
+      shaders: true,
+      shadows: true,
+      fog: true,
+      grain: true
+    };
+    const defaultFov = camera.fov;
+    let zoomLevel = 1;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    const getPixelRatio = () => Math.min(devicePixelRatio, graphicsSettings.performance ? 1 : 1.5);
+    renderer.setPixelRatio(getPixelRatio());
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+    mount.appendChild(renderer.domElement);
+
+    const torchConfig = CONFIG.scene.lighting.torch;
+    const torch = new THREE.SpotLight(
+      torchConfig.color,
+      torchConfig.intensity,
+      torchConfig.distance,
+      torchConfig.angle,
+      torchConfig.penumbra,
+      torchConfig.decay
+    );
+    torch.layers.enable(outdoorLayer);
+    torch.position.fromArray(torchConfig.position);
+    torch.castShadow = true;
+    torch.shadow.mapSize.set(512, 512);
+    torch.shadow.camera.near = 0.1;
+    torch.shadow.camera.far = torchConfig.distance;
+    torch.shadow.camera.fov = THREE.MathUtils.radToDeg(torch.angle * 2);
+    torch.shadow.bias = -0.0001;
+    torch.shadow.normalBias = 0.025;
+    torch.shadow.radius = 3;
+    torch.visible = false;
+    torch.target.position.copy(torch.position);
+    torch.target.position.z -= 1;
+    camera.add(torch, torch.target);
+
+    const torchCore = new THREE.SpotLight(
+      torchConfig.color,
+      torchConfig.coreIntensity,
+      torchConfig.coreDistance,
+      torchConfig.coreAngle,
+      torchConfig.corePenumbra,
+      torchConfig.decay
+    );
+    torchCore.layers.enable(outdoorLayer);
+    torchCore.position.fromArray(torchConfig.position);
+    torchCore.target.position.copy(torchCore.position);
+    torchCore.target.position.z -= 1;
+    torchCore.visible = false;
+    camera.add(torchCore, torchCore.target);
+    scene.add(camera);
+    let torchOn = false;
+
+    const ambientLight = new THREE.HemisphereLight(0x283b53, 0x100d12, 0.3);
+    ambientLight.layers.enable(outdoorLayer);
+    scene.add(ambientLight);
+    const ceilingLights = [];
+    const ceilingFixtureMaterial = new THREE.MeshStandardMaterial({
+      color: 0xf2e5ca,
+      emissive: 0xffdca8,
+      emissiveIntensity: 1.5,
+      roughness: 0.38,
+      metalness: 0.04
+    });
+    const ceilingHousingMaterial = new THREE.MeshStandardMaterial({
+      color: 0x48433a,
+      roughness: 0.64,
+      metalness: 0.38
+    });
+    const ceilingReflectorMaterial = new THREE.MeshStandardMaterial({
+      color: 0x777162,
+      roughness: 0.32,
+      metalness: 0.7
+    });
+    const ceilingCavityMaterial = new THREE.MeshStandardMaterial({
+      color: 0x171719,
+      roughness: 0.78,
+      metalness: 0.12
+    });
+    const ceilingLightConfig = CONFIG.scene.lighting.ceiling;
+    const ceilingLightMaterial = new THREE.PointLight(
+      ceilingLightConfig.color,
+      ceilingLightConfig.intensity,
+      ceilingLightConfig.distance,
+      ceilingLightConfig.decay
+    );
+    for (const [x, z] of CONFIG.scene.room.ceilingLights) {
+      const fixture = new THREE.Group();
+      fixture.position.set(x, 0, z);
+      scene.add(fixture);
+
+      const housing = new THREE.Mesh(
+        new THREE.BoxGeometry(1.16, 0.11, 0.42),
+        ceilingHousingMaterial
+      );
+      housing.position.y = 3.325;
+      housing.castShadow = true;
+      housing.receiveShadow = true;
+      fixture.add(housing);
+
+      const cavity = new THREE.Mesh(
+        new THREE.BoxGeometry(1.04, 0.018, 0.3),
+        ceilingCavityMaterial
+      );
+      cavity.position.y = 3.264;
+      fixture.add(cavity);
+
+      const lens = new THREE.Mesh(
+        new THREE.BoxGeometry(0.94, 0.024, 0.22),
+        ceilingFixtureMaterial
+      );
+      lens.position.y = 3.242;
+      lens.receiveShadow = true;
+      fixture.add(lens);
+
+      for (const side of [-1, 1]) {
+        const longReflector = new THREE.Mesh(
+          new THREE.BoxGeometry(1.08, 0.025, 0.045),
+          ceilingReflectorMaterial
+        );
+        longReflector.position.set(0, 3.264, side * 0.184);
+        fixture.add(longReflector);
+
+        const shortReflector = new THREE.Mesh(
+          new THREE.BoxGeometry(0.045, 0.025, 0.32),
+          ceilingReflectorMaterial
+        );
+        shortReflector.position.set(side * 0.555, 3.264, 0);
+        fixture.add(shortReflector);
+
+        const tube = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.019, 0.019, 0.84, 12),
+          ceilingFixtureMaterial
+        );
+        tube.rotation.z = Math.PI / 2;
+        tube.position.set(0, 3.232, side * 0.065);
+        fixture.add(tube);
+      }
+
+      const mountMaterial = ceilingHousingMaterial;
+      for (const side of [-1, 1]) {
+        const mount = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.025, 0.025, 0.035, 12),
+          mountMaterial
+        );
+        mount.position.set(side * 0.46, 3.385, 0);
+        mount.castShadow = true;
+        fixture.add(mount);
+      }
+
+      const light = ceilingLightMaterial.clone();
+      light.position.set(x, 3.03, z);
+      scene.add(light);
+      ceilingLights.push(light);
+    }
+
+    const loader = new THREE.TextureLoader();
+    const loadTexture = (path, repeatX, repeatY) => {
+      const texture = loader.load(path, undefined, undefined, (error) => {
+        console.error(`Could not load room texture: ${path}`, error);
+      });
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(repeatX, repeatY);
+      return texture;
+    };
+    const loadSurfaceMap = (path, repeatX, repeatY) => {
+      const texture = loader.load(path, undefined, undefined, (error) => {
+        console.error(`Could not load room surface map: ${path}`, error);
+      });
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(repeatX, repeatY);
+      return texture;
+    };
+    const createCeilingBumpMap = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 256;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Could not create the ceiling surface texture.");
+      const image = context.createImageData(canvas.width, canvas.height);
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const index = (y * canvas.width + x) * 4;
+          const hash = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+          const grain = (hash - Math.floor(hash) - 0.5) * 34;
+          const cloud = Math.sin(x * 0.12 + Math.sin(y * 0.08) * 3) * 6;
+          const value = 128 + grain + cloud;
+          image.data[index] = value;
+          image.data[index + 1] = value;
+          image.data[index + 2] = value;
+          image.data[index + 3] = 255;
+        }
+      }
+      context.putImageData(image, 0, 0);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(8, 9);
+      return texture;
+    };
+    let surfaceShadersEnabled = true;
+    const surfaceShaderMaterials = new Set();
+    const addSurfaceGrain = (material, colorVariation = 0, woodGrain = false) => {
+      surfaceShaderMaterials.add(material);
+      material.onBeforeCompile = (shader) => {
+        if (!surfaceShadersEnabled) return;
+        shader.vertexShader = shader.vertexShader
+          .replace("#include <common>", "#include <common>\nvarying vec3 vSurfaceWorldPosition;")
+          .replace(
+            "#include <begin_vertex>",
+            "#include <begin_vertex>\nvSurfaceWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;"
+          );
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", "#include <common>\nvarying vec3 vSurfaceWorldPosition;")
+          .replace(
+            "#include <color_fragment>",
+            `#include <color_fragment>
+            ${colorVariation > 0 ? `
+            float plasterCloud = sin(vSurfaceWorldPosition.x * 2.1 + sin(vSurfaceWorldPosition.z * 1.7) * 1.2)
+              * cos(vSurfaceWorldPosition.z * 2.4 + vSurfaceWorldPosition.x * 1.1);
+            float plasterSpeckle = fract(sin(dot(floor(vSurfaceWorldPosition * 36.0), vec3(127.1, 311.7, 74.7))) * 43758.5453);
+            diffuseColor.rgb *= 1.0 + plasterCloud * ${colorVariation.toFixed(3)}
+              + (plasterSpeckle - 0.5) * ${(colorVariation * 0.58).toFixed(3)};` : ""}
+            ${woodGrain ? `
+            float woodWave = sin(vSurfaceWorldPosition.x * 31.0
+              + sin(vSurfaceWorldPosition.z * 2.7 + vSurfaceWorldPosition.y) * 1.8);
+            float woodFiber = smoothstep(0.82, 0.99, woodWave);
+            diffuseColor.rgb *= 1.0 - woodFiber * 0.045;` : ""}
+            `
+          )
+          .replace(
+            "#include <roughnessmap_fragment>",
+            `#include <roughnessmap_fragment>
+            float surfaceGrain = fract(sin(dot(floor(vSurfaceWorldPosition * 48.0), vec3(127.1, 311.7, 74.7))) * 43758.5453);
+            roughnessFactor = clamp(roughnessFactor + (surfaceGrain - 0.5) * 0.065
+              ${woodGrain ? " + woodFiber * 0.08" : ""}, 0.04, 1.0);`
+          );
+      };
+      material.customProgramCacheKey = () => `surface-grain-${colorVariation}-${woodGrain}-${surfaceShadersEnabled}`;
+      material.needsUpdate = true;
+      return material;
+    };
+
+    const floorTexture = loadTexture(CONFIG.textures.floor.color, ...CONFIG.textures.floor.repeat);
+    const floorNormal = loadSurfaceMap(CONFIG.textures.floor.normal, ...CONFIG.textures.floor.repeat);
+    const floorRoughness = loadSurfaceMap(CONFIG.textures.floor.roughness, ...CONFIG.textures.floor.repeat);
+    const wallTexture = loadTexture(CONFIG.textures.wall.color, ...CONFIG.textures.wall.repeat);
+    const wallNormal = loadSurfaceMap(CONFIG.textures.wall.normal, ...CONFIG.textures.wall.repeat);
+    const wallRoughness = loadSurfaceMap(CONFIG.textures.wall.roughness, ...CONFIG.textures.wall.repeat);
+    const woodTexture = loadTexture(CONFIG.textures.wood.color, ...CONFIG.textures.wood.repeat);
+    const woodNormal = loadSurfaceMap(CONFIG.textures.wood.normal, ...CONFIG.textures.wood.repeat);
+    const woodRoughness = loadSurfaceMap(CONFIG.textures.wood.roughness, ...CONFIG.textures.wood.repeat);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(8, 9),
+      addSurfaceGrain(new THREE.MeshStandardMaterial({
+        map: floorTexture,
+        normalMap: floorNormal,
+        roughnessMap: floorRoughness,
+        roughness: 0.76,
+        color: 0x9b8060
+      }))
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = 0;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const ceiling = new THREE.Mesh(
+      new THREE.PlaneGeometry(8, 9),
+      addSurfaceGrain(new THREE.MeshStandardMaterial({
+        color: 0x81796a,
+        roughness: 0.96,
+        bumpMap: createCeilingBumpMap(),
+        bumpScale: 0.022,
+        side: THREE.DoubleSide
+      }), 0.11)
+    );
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.position.y = 3.4;
+    ceiling.receiveShadow = true;
+    scene.add(ceiling);
+
+    const ceilingTrimMaterial = new THREE.MeshStandardMaterial({
+      color: 0x51483b,
+      roughness: 0.72,
+      metalness: 0.08
+    });
+    const addCeilingTrim = (width, height, depth, x, y, z) => {
+      const trim = new THREE.Mesh(
+        new THREE.BoxGeometry(width, height, depth),
+        ceilingTrimMaterial
+      );
+      trim.position.set(x, y, z);
+      trim.castShadow = true;
+      trim.receiveShadow = true;
+      scene.add(trim);
+    };
+    addCeilingTrim(7.92, 0.09, 0.13, 0, 3.34, -4.42);
+    addCeilingTrim(7.92, 0.09, 0.13, 0, 3.34, 4.42);
+    addCeilingTrim(0.13, 0.09, 8.72, -3.92, 3.34, 0);
+    addCeilingTrim(0.13, 0.09, 8.72, 3.92, 3.34, 0);
+    addCeilingTrim(0.055, 0.045, 8.72, 0, 3.37, 0);
+    addCeilingTrim(7.72, 0.045, 0.055, 0, 3.37, 0);
+
+    const wallMaterial = addSurfaceGrain(new THREE.MeshStandardMaterial({
+      map: wallTexture,
+      normalMap: wallNormal,
+      roughnessMap: wallRoughness,
+      color: 0x786b68,
+      roughness: 0.88,
+      side: THREE.DoubleSide
+    }));
+    const addWall = (width, height, x, y, z, rotationY = 0) => {
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(width, height), wallMaterial);
+      wall.position.set(x, y, z);
+      wall.rotation.y = rotationY;
+      wall.receiveShadow = true;
+      scene.add(wall);
+    };
+    for (const wall of CONFIG.scene.room.walls) {
+      addWall(...wall.size, ...wall.position, wall.rotationY);
+    }
+
+    const wainscotMaterial = addSurfaceGrain(new THREE.MeshStandardMaterial({
+      map: woodTexture,
+      normalMap: woodNormal,
+      roughnessMap: woodRoughness,
+      color: 0x9a7750,
+      roughness: 0.88,
+      side: THREE.DoubleSide
+    }));
+    const addWainscot = (width, x, z, rotationY) => {
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(width, 1.05), wainscotMaterial);
+      panel.position.set(x, 0.57, z);
+      panel.rotation.y = rotationY;
+      panel.receiveShadow = true;
+      scene.add(panel);
+    };
+    for (const wainscot of CONFIG.scene.room.wainscots) {
+      addWainscot(wainscot.width, wainscot.x, wainscot.z, wainscot.rotationY);
+    }
+
+    const secondRoomCenterZ = 9;
+    const secondRoomFloor = new THREE.Mesh(
+      new THREE.PlaneGeometry(8, 9),
+      floor.material
+    );
+    secondRoomFloor.rotation.x = -Math.PI / 2;
+    secondRoomFloor.position.set(0, 0, secondRoomCenterZ);
+    secondRoomFloor.receiveShadow = true;
+    scene.add(secondRoomFloor);
+
+    const secondRoomCeiling = new THREE.Mesh(
+      new THREE.PlaneGeometry(8, 9),
+      ceiling.material
+    );
+    secondRoomCeiling.rotation.x = Math.PI / 2;
+    secondRoomCeiling.position.set(0, 3.4, secondRoomCenterZ);
+    secondRoomCeiling.receiveShadow = true;
+    scene.add(secondRoomCeiling);
+
+    addWall(9, 3.4, -4, 1.7, secondRoomCenterZ, Math.PI / 2);
+    addWall(9, 3.4, 4, 1.7, secondRoomCenterZ, -Math.PI / 2);
+    addWall(8, 3.4, 0, 1.7, 13.5);
+    addWainscot(9, -3.96, secondRoomCenterZ, Math.PI / 2);
+    addWainscot(9, 3.96, secondRoomCenterZ, -Math.PI / 2);
+    addWainscot(8, 0, 13.46, 0);
+
+    for (const [width, depth, x, y, z] of [
+      [7.92, 0.13, 0, 3.34, 4.42],
+      [7.92, 0.13, 0, 3.34, 13.58],
+      [0.13, 9.16, -3.92, 3.34, secondRoomCenterZ],
+      [0.13, 9.16, 3.92, 3.34, secondRoomCenterZ],
+    ]) {
+      const trim = new THREE.Mesh(
+        new THREE.BoxGeometry(width, 0.09, depth),
+        ceilingTrimMaterial
+      );
+      trim.position.set(x, y, z);
+      trim.castShadow = true;
+      trim.receiveShadow = true;
+      scene.add(trim);
+    }
+
+    const storageMetalMaterial = new THREE.MeshStandardMaterial({
+      color: 0x454744,
+      metalness: 0.62,
+      roughness: 0.56
+    });
+    const storageCrateMaterial = new THREE.MeshStandardMaterial({
+      color: 0x584936,
+      roughness: 0.9
+    });
+    for (const z of [7.2, 8.8, 10.4]) {
+      const shelf = new THREE.Mesh(
+        new THREE.BoxGeometry(0.82, 0.09, 1.42),
+        storageMetalMaterial
+      );
+      shelf.position.set(3.43, 0.65 + (z === 8.8 ? 0.95 : 1.9), z);
+      shelf.castShadow = true;
+      shelf.receiveShadow = true;
+      scene.add(shelf);
+    }
+    for (const x of [3.05, 3.81]) {
+      const upright = new THREE.Mesh(
+        new THREE.BoxGeometry(0.07, 2.55, 0.07),
+        storageMetalMaterial
+      );
+      upright.position.set(x, 1.3, 8.8);
+      upright.castShadow = true;
+      scene.add(upright);
+    }
+    for (const [x, y, z, size] of [
+      [3.42, 0.45, 7.3, 0.58],
+      [3.42, 1.35, 8.9, 0.62],
+      [3.42, 2.28, 10.35, 0.54],
+    ]) {
+      const crate = new THREE.Mesh(
+        new THREE.BoxGeometry(size, size * 0.72, size),
+        storageCrateMaterial
+      );
+      crate.position.set(x, y, z);
+      crate.castShadow = true;
+      crate.receiveShadow = true;
+      scene.add(crate);
+    }
+
+    const transmitterConsole = new THREE.Mesh(
+      new THREE.BoxGeometry(3.6, 1.12, 0.62),
+      storageMetalMaterial
+    );
+    transmitterConsole.position.set(0, 0.72, 12.35);
+    transmitterConsole.castShadow = true;
+    transmitterConsole.receiveShadow = true;
+    scene.add(transmitterConsole);
+    const consoleFace = new THREE.Mesh(
+      new THREE.BoxGeometry(3.3, 0.44, 0.035),
+      new THREE.MeshStandardMaterial({
+        color: 0x242726,
+        emissive: 0x15312c,
+        emissiveIntensity: 0.35,
+        roughness: 0.48
+      })
+    );
+    consoleFace.position.set(0, 0.98, 12.02);
+    scene.add(consoleFace);
+
+    const windowSillPanel = new THREE.Mesh(
+      new THREE.PlaneGeometry(8.4, 0.48),
+      wainscotMaterial
+    );
+    windowSillPanel.position.set(3.96, 0.26, 0);
+    windowSillPanel.rotation.y = -Math.PI / 2;
+    scene.add(windowSillPanel);
+
+    const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x493522, roughness: 0.8 });
+    for (const z of [-4.42, 4.42]) {
+      for (const y of [0.11, 1.1]) {
+        const segments = z > 0
+          ? [{ width: 5, x: -1.5 }, { width: 1, x: 3.5 }]
+          : [{ width: 8, x: 0 }];
+        for (const segment of segments) {
+          const trim = new THREE.Mesh(new THREE.BoxGeometry(segment.width, 0.1, 0.07), trimMaterial);
+          trim.position.set(segment.x, y, z);
+          scene.add(trim);
+        }
+      }
+    }
+    for (const x of [-3.92]) {
+      for (const y of [0.11, 1.1]) {
+        const trim = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 9), trimMaterial);
+        trim.position.set(x, y, 0);
+        scene.add(trim);
+      }
+    }
+
+    const windowTrimMaterial = new THREE.MeshStandardMaterial({
+      color: 0x493323,
+      roughness: 0.68,
+      metalness: 0.04
+    });
+    const windowWoodMaterial = addSurfaceGrain(new THREE.MeshPhysicalMaterial({
+      map: woodTexture,
+      normalMap: woodNormal,
+      roughnessMap: woodRoughness,
+      color: 0x795b3c,
+      roughness: 0.58,
+      clearcoat: 0.16,
+      clearcoatRoughness: 0.42
+    }), 0, true);
+    const windowBeadMaterial = new THREE.MeshStandardMaterial({
+      color: 0x9a7852,
+      roughness: 0.62
+    });
+    const windowBrassMaterial = new THREE.MeshStandardMaterial({
+      color: 0x80683e,
+      metalness: 0.72,
+      roughness: 0.3
+    });
+    const addWindowPart = (width, height, depth, x, y, z, material) => {
+      const part = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+      part.position.set(x, y, z);
+      part.castShadow = true;
+      part.receiveShadow = true;
+      scene.add(part);
+      return part;
+    };
+
+    for (const y of [0.59, 3.15]) {
+      addWindowPart(0.2, 0.18, 8.55, 3.82, y, 0, windowTrimMaterial);
+    }
+    for (const z of [-4.25, 4.25]) {
+      addWindowPart(0.2, 2.56, 0.18, 3.82, 1.87, z, windowTrimMaterial);
+    }
+
+    const windowSill = addWindowPart(
+      0.38,
+      0.11,
+      8.62,
+      3.76,
+      0.57,
+      0,
+      windowWoodMaterial
+    );
+    windowSill.receiveShadow = true;
+    addWindowPart(0.23, 0.07, 8.48, 3.82, 0.47, 0, windowTrimMaterial);
+    addWindowPart(0.11, 0.09, 8.36, 3.84, 0.65, 0, windowBeadMaterial);
+
+    for (const y of [0.69, 1.87, 3.05]) {
+      addWindowPart(0.13, 0.1, 8.18, 3.9, y, 0, windowWoodMaterial);
+      if (y !== 1.87) {
+        addWindowPart(0.06, 0.035, 8.02, 3.86, y + (y < 1 ? 0.07 : -0.07), 0, windowBeadMaterial);
+      }
+    }
+    for (const z of [-4.08, -2.04, 0, 2.04, 4.08]) {
+      const meetingStile = z === 0;
+      addWindowPart(
+        0.13,
+        2.38,
+        meetingStile ? 0.15 : 0.11,
+        3.9,
+        1.87,
+        z,
+        windowWoodMaterial
+      );
+      if (!meetingStile) {
+        addWindowPart(0.055, 2.2, 0.035, 3.855, 1.87, z, windowBeadMaterial);
+      }
+    }
+
+    for (const z of [-3.98, 3.98]) {
+      for (const y of [1.12, 2.62]) {
+        addWindowPart(0.07, 0.24, 0.1, 3.77, y, z, windowBrassMaterial);
+        addWindowPart(0.12, 0.045, 0.14, 3.72, y - 0.08, z, windowBrassMaterial);
+        addWindowPart(0.12, 0.045, 0.14, 3.72, y + 0.08, z, windowBrassMaterial);
+      }
+    }
+    for (const z of [-0.19, 0.19]) {
+      addWindowPart(0.08, 0.12, 0.075, 3.78, 1.84, z, windowBrassMaterial);
+      const latch = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.035, 0.035, 0.18, 12),
+        windowBrassMaterial
+      );
+      latch.rotation.z = Math.PI / 2;
+      latch.position.set(3.72, 1.84, z);
+      scene.add(latch);
+    }
+
+    const deskMaterial = addSurfaceGrain(new THREE.MeshPhysicalMaterial({
+      map: woodTexture,
+      normalMap: woodNormal,
+      roughnessMap: woodRoughness,
+      color: 0x987047,
+      roughness: 0.82,
+      clearcoat: 0.24,
+      clearcoatRoughness: 0.34
+    }), 0, true);
+    const deskTop = new THREE.Mesh(new THREE.BoxGeometry(7.86, 0.16, 0.92), deskMaterial);
+    deskTop.position.set(0, 1.02, -4.02);
+    deskTop.castShadow = true;
+    deskTop.receiveShadow = true;
+    scene.add(deskTop);
+
+    const cabinetMaterial = addSurfaceGrain(new THREE.MeshPhysicalMaterial({
+      map: woodTexture,
+      normalMap: woodNormal,
+      roughnessMap: woodRoughness,
+      color: 0x765332,
+      roughness: 0.88,
+      clearcoat: 0.1,
+      clearcoatRoughness: 0.5
+    }), 0, true);
+    const cabinetBody = new THREE.Mesh(new THREE.BoxGeometry(7.68, 0.82, 0.76), cabinetMaterial);
+    cabinetBody.position.set(0, 0.49, -4.08);
+    cabinetBody.castShadow = true;
+    cabinetBody.receiveShadow = true;
+    scene.add(cabinetBody);
+
+    const cabinetFront = -3.69;
+    const drawerMaterial = addSurfaceGrain(new THREE.MeshPhysicalMaterial({
+      map: woodTexture,
+      normalMap: woodNormal,
+      roughnessMap: woodRoughness,
+      color: 0x8c6841,
+      roughness: 0.78,
+      clearcoat: 0.14,
+      clearcoatRoughness: 0.4
+    }), 0, true);
+    const handleMaterial = new THREE.MeshStandardMaterial({ color: 0x76664b, metalness: 0.78, roughness: 0.34 });
+    for (const x of [-2.55, 0, 2.55]) {
+      const door = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.65, 0.055), drawerMaterial);
+      door.position.set(x, 0.5, cabinetFront);
+      door.castShadow = true;
+      scene.add(door);
+
+      for (const side of [-1, 1]) {
+        const stile = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.59, 0.035), trimMaterial);
+        stile.position.set(x + side * 1.1, 0.5, cabinetFront - 0.047);
+        scene.add(stile);
+      }
+      for (const y of [0.2, 0.8]) {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.045, 0.035), trimMaterial);
+        rail.position.set(x, y, cabinetFront - 0.047);
+        scene.add(rail);
+      }
+
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.045, 0.07), handleMaterial);
+      handle.position.set(x, 0.5, cabinetFront - 0.085);
+      scene.add(handle);
+    }
+    const toeKick = new THREE.Mesh(
+      new THREE.BoxGeometry(7.6, 0.12, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x392c1f, roughness: 0.9 })
+    );
+    toeKick.position.set(0, 0.08, -3.67);
+    scene.add(toeKick);
+
+    const stoolSeat = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.36, 0.4, 0.14, 16),
+      new THREE.MeshStandardMaterial({ color: 0x533d28, roughness: 0.85 })
+    );
+    stoolSeat.position.set(0, 0.68, -2.72);
+    stoolSeat.castShadow = true;
+    scene.add(stoolSeat);
+    const stoolLegs = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.27, 0.58, 12), trimMaterial);
+    stoolLegs.position.set(0, 0.36, -2.72);
+    stoolLegs.castShadow = true;
+    scene.add(stoolLegs);
+
+    const signCanvas = document.createElement("canvas");
+    signCanvas.width = 512;
+    signCanvas.height = 160;
+    const signContext = signCanvas.getContext("2d");
+    signContext.fillStyle = "#27221b";
+    signContext.fillRect(0, 0, 512, 160);
+    signContext.strokeStyle = "#9c7345";
+    signContext.lineWidth = 8;
+    signContext.strokeRect(8, 8, 496, 144);
+    signContext.textAlign = "center";
+    signContext.textBaseline = "middle";
+    signContext.font = "bold 62px Arial, sans-serif";
+    signContext.fillStyle = "#e14b3f";
+    signContext.fillText(CONFIG.signage.text, 256, 84);
+    const signTexture = new THREE.CanvasTexture(signCanvas);
+    signTexture.colorSpace = THREE.SRGBColorSpace;
+    const onAirSign = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.15, 0.36),
+      new THREE.MeshStandardMaterial({
+        map: signTexture,
+        color: 0x393126,
+        emissive: 0x8c1d19,
+        emissiveMap: signTexture,
+        emissiveIntensity: 0.5,
+        roughness: 0.9
+      })
+    );
+    onAirSign.position.fromArray(CONFIG.signage.position);
+    scene.add(onAirSign);
+    const signGlow = new THREE.PointLight(0xb52a24, 1.8, 4.5, 2);
+    signGlow.position.fromArray(CONFIG.signage.glowPosition);
+    scene.add(signGlow);
+
+    const outdoorGround = new THREE.Mesh(
+      new THREE.PlaneGeometry(150, 100),
+      new THREE.MeshStandardMaterial({
+        color: 0x171820,
+        roughness: 0.94,
+        side: THREE.DoubleSide
+      })
+    );
+    outdoorGround.rotation.x = -Math.PI / 2;
+    outdoorGround.position.set(48, -0.08, 0);
+    outdoorGround.receiveShadow = true;
+    scene.add(markAsOutdoor(outdoorGround));
+
+    const random = (() => {
+      let seed = 80421;
+      return () => {
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+    })();
+
+    const snowbankMaterial = new THREE.MeshStandardMaterial({
+      color: 0x171a20,
+      roughness: 1
+    });
+    const snowbankGeometry = new THREE.IcosahedronGeometry(1, 1);
+    for (let index = 0; index < 15; index++) {
+      const bank = new THREE.Mesh(snowbankGeometry, snowbankMaterial);
+      bank.position.set(8 + random() * 27, -0.28 + random() * 0.12, (random() - 0.5) * 28);
+      bank.scale.set(1.3 + random() * 3.2, 0.22 + random() * 0.5, 1.2 + random() * 2.8);
+      bank.receiveShadow = true;
+      scene.add(markAsOutdoor(bank));
+    }
+
+    const treeCount = 250;
+    const trunks = new THREE.InstancedMesh(
+      new THREE.CylinderGeometry(0.12, 0.25, 1, 6),
+      new THREE.MeshStandardMaterial({ color: 0x342d2a, roughness: 1 }),
+      treeCount
+    );
+    const canopies = new THREE.InstancedMesh(
+      new THREE.IcosahedronGeometry(1, 1),
+      new THREE.MeshStandardMaterial({ color: 0x35513c, roughness: 1, flatShading: true }),
+      treeCount * 3
+    );
+    const treeTransform = new THREE.Object3D();
+    const leafPalette = [0x273b30, 0x304638, 0x3c513c, 0x293d35, 0x45513b];
+    let leafIndex = 0;
+
+    for (let index = 0; index < treeCount; index++) {
+      const x = 35 + random() * 78;
+      const z = (random() - 0.5) * 110;
+      const height = 4.5 + random() * 5.5;
+      const crownSize = 1.5 + random() * 2.4;
+      const base = Math.max(0, (42 - x) * 0.065);
+
+      treeTransform.position.set(x, height / 2, z);
+      treeTransform.scale.set(1, height, 1);
+      treeTransform.rotation.set(0, random() * Math.PI, 0);
+      treeTransform.updateMatrix();
+      trunks.setMatrixAt(index, treeTransform.matrix);
+
+      for (let cluster = 0; cluster < 3; cluster++) {
+        const angle = (cluster / 3) * Math.PI * 2 + random() * 0.65;
+        treeTransform.position.set(
+          x + Math.cos(angle) * crownSize * 0.42,
+          height - crownSize * 0.35 + random() * crownSize * 0.32 + base,
+          z + Math.sin(angle) * crownSize * 0.42
+        );
+        const size = crownSize * (0.62 + random() * 0.38);
+        treeTransform.scale.set(size, size * (0.72 + random() * 0.4), size);
+        treeTransform.rotation.set(random() * 0.3, random() * Math.PI, random() * 0.3);
+        treeTransform.updateMatrix();
+        canopies.setMatrixAt(leafIndex, treeTransform.matrix);
+        canopies.setColorAt(leafIndex, new THREE.Color(leafPalette[Math.floor(random() * leafPalette.length)]));
+        leafIndex++;
+      }
+    }
+    trunks.instanceMatrix.needsUpdate = true;
+    canopies.instanceMatrix.needsUpdate = true;
+    scene.add(markAsOutdoor(trunks), markAsOutdoor(canopies));
+
+    const moon = new THREE.Mesh(
+      new THREE.SphereGeometry(1.7, 20, 16),
+      new THREE.MeshBasicMaterial({ color: 0x9caec6 })
+    );
+    moon.position.set(72, 30, -37);
+    scene.add(markAsOutdoor(moon));
+
+    const starPositions = new Float32Array(180 * 3);
+    for (let index = 0; index < 180; index++) {
+      starPositions[index * 3] = 30 + random() * 90;
+      starPositions[index * 3 + 1] = 10 + random() * 58;
+      starPositions[index * 3 + 2] = (random() - 0.5) * 95;
+    }
+    const starGeometry = new THREE.BufferGeometry();
+    starGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
+    scene.add(markAsOutdoor(new THREE.Points(
+      starGeometry,
+      new THREE.PointsMaterial({ color: 0x515663, size: 0.09, sizeAttenuation: true })
+    )));
+
+    const lampPoleMaterial = new THREE.MeshStandardMaterial({ color: 0x343a3b, metalness: 0.72, roughness: 0.38 });
+    const lampX = 16;
+    const lampZ = -14.5;
+    const lampPole = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.12, 5.5, 10), lampPoleMaterial);
+    lampPole.position.set(lampX, 2.75, lampZ);
+    scene.add(markAsOutdoor(lampPole));
+    const lampArm = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.08), lampPoleMaterial);
+    lampArm.position.set(lampX - 0.5, 5.43, lampZ);
+    scene.add(markAsOutdoor(lampArm));
+    const lampHead = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.34, 0.28, 12),
+      new THREE.MeshStandardMaterial({ color: 0x292d2e, metalness: 0.45, roughness: 0.45 })
+    );
+    lampHead.position.set(lampX - 1.02, 5.25, lampZ);
+    scene.add(markAsOutdoor(lampHead));
+    const lampBulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.14, 12, 8),
+      new THREE.MeshBasicMaterial({ color: 0xdcb77c })
+    );
+    lampBulb.position.set(lampX - 1.02, 5.08, lampZ);
+    scene.add(markAsOutdoor(lampBulb));
+    const streetLamp = new THREE.PointLight(0xffc77d, 68, 28, 1.8);
+    streetLamp.position.set(lampX - 1.02, 5.05, lampZ);
+    streetLamp.castShadow = false;
+    streetLamp.layers.set(outdoorLayer);
+    scene.add(streetLamp);
+
+    const snowCount = 1900;
+    const snowPositions = new Float32Array(snowCount * 3);
+    for (let index = 0; index < snowCount; index++) {
+      snowPositions[index * 3] = 4.3 + random() * 25;
+      snowPositions[index * 3 + 1] = 0.2 + random() * 13;
+      snowPositions[index * 3 + 2] = (random() - 0.5) * 19;
+    }
+    const snowGeometry = new THREE.BufferGeometry();
+    snowGeometry.setAttribute("position", new THREE.BufferAttribute(snowPositions, 3));
+    const snowfall = new THREE.Points(
+      snowGeometry,
+      new THREE.PointsMaterial({ color: 0x747b88, size: 0.06, transparent: true, opacity: 0.48, sizeAttenuation: true })
+    );
+    snowfall.frustumCulled = false;
+    scene.add(markAsOutdoor(snowfall));
+
+    const fitModel = (root, size, position, rotationY = 0) => {
+      const bounds = new THREE.Box3().setFromObject(root);
+      const dimensions = bounds.getSize(new THREE.Vector3());
+      const largest = Math.max(dimensions.x, dimensions.y, dimensions.z);
+      if (!Number.isFinite(largest) || largest <= 0) {
+        throw new Error("A loaded room model has no measurable dimensions.");
+      }
+      root.scale.setScalar(size / largest);
+      root.updateMatrixWorld(true);
+      const fittedBounds = new THREE.Box3().setFromObject(root);
+      const center = fittedBounds.getCenter(new THREE.Vector3());
+      root.position.sub(center);
+      root.position.y -= fittedBounds.min.y - center.y;
+      root.position.add(new THREE.Vector3(...position));
+      root.rotation.y = rotationY;
+      root.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      scene.add(root);
+    };
+
+    const gltfLoader = new GLTFLoader();
+    const loadModel = (path, size, position, rotationY = 0) => new Promise((resolve) => {
+      gltfLoader.load(path, (gltf) => {
+        try {
+          fitModel(gltf.scene, size, position, rotationY);
+          resolve(gltf.scene);
+        } catch (error) {
+          console.error(`Could not place room model: ${path}`, error);
+          resolve(null);
+        }
+      }, undefined, (error) => {
+        console.error(`Could not load room model: ${path}`, error);
+        resolve(null);
+      });
+    });
+
+    const modelsReady = Promise.all(
+      CONFIG.models.map(({ source, scale, position, rotationY }) => (
+        loadModel(source, scale, position, rotationY)
+      ))
+    );
+
+    const keys = new Set();
+    let settingsOpen = false;
+    let settingsReturnToGame = false;
+    let mouseSensitivity = 1;
+    let audioVolume = CONFIG.audio.volume;
+    let yaw = 0;
+    let pitch = 0;
+    let previousTime = performance.now();
+    const playerConfig = CONFIG.scene.player;
+    const playerHeight = playerConfig.height;
+    const playerRadius = playerConfig.radius;
+    let fallbackLook = false;
+    const forward = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const movement = new THREE.Vector3();
+    const clock = new THREE.Clock();
+    let lampFlickerUntil = 0;
+    const deskBounds = playerConfig.deskBounds;
+
+    const updateCamera = (delta) => {
+      camera.rotation.order = "YXZ";
+      camera.rotation.y = yaw;
+      camera.rotation.x = pitch;
+      forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+      right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+      movement.set(0, 0, 0);
+      const crouching = controls.crouch.some((code) => keys.has(code));
+      if (controls.movement.forward.some((code) => keys.has(code))) movement.add(forward);
+      if (controls.movement.backward.some((code) => keys.has(code))) movement.sub(forward);
+      if (controls.movement.right.some((code) => keys.has(code))) movement.add(right);
+      if (controls.movement.left.some((code) => keys.has(code))) movement.sub(right);
+      if (movement.lengthSq() > 0) {
+        movement.normalize().multiplyScalar((crouching ? playerConfig.crouchSpeed : playerConfig.walkSpeed) * delta);
+        const nextX = THREE.MathUtils.clamp(
+          camera.position.x + movement.x,
+          playerConfig.roomBounds.minX,
+          playerConfig.roomBounds.maxX
+        );
+        const nextZ = THREE.MathUtils.clamp(
+          camera.position.z + movement.z,
+          playerConfig.roomBounds.minZ,
+          playerConfig.roomBounds.maxZ
+        );
+        const overlapsDesk = (x, z) => (
+          x + playerRadius > deskBounds.minX &&
+          x - playerRadius < deskBounds.maxX &&
+          z + playerRadius > deskBounds.minZ &&
+          z - playerRadius < deskBounds.maxZ
+        );
+        if (!overlapsDesk(nextX, camera.position.z)) camera.position.x = nextX;
+        if (!overlapsDesk(camera.position.x, nextZ)) camera.position.z = nextZ;
+      }
+      camera.position.y = THREE.MathUtils.damp(
+        camera.position.y,
+        crouching ? playerConfig.crouchHeight : playerHeight,
+        12,
+        delta
+      );
+
+    };
+
+    const updateWorldPrompt = () => {
+      worldPrompt.hidden = true;
+    };
+
+    const animate = (time) => {
+      requestAnimationFrame(animate);
+      const delta = Math.min((time - previousTime) / 1000, 0.05);
+      previousTime = time;
+      if (settingsOpen) {
+        renderer.render(scene, camera);
+        return;
+      }
+      updateCamera(delta);
+      updateWorldPrompt();
+      const targetFov = defaultFov / zoomLevel;
+      const nextFov = THREE.MathUtils.damp(camera.fov, targetFov, 10, delta);
+      if (Math.abs(nextFov - camera.fov) > 0.01) {
+        camera.fov = nextFov;
+        camera.updateProjectionMatrix();
+      }
+      const elapsed = clock.getElapsedTime();
+      if (random() < delta * 0.75) lampFlickerUntil = elapsed + 0.045 + random() * 0.1;
+      const lampFlicker = elapsed < lampFlickerUntil ? 0.08 : (random() < 0.018 ? 0.55 : 1);
+      streetLamp.intensity = 68 * lampFlicker;
+      lampBulb.material.color.setHex(lampFlicker < 0.2 ? 0x625747 : 0xdcb77c);
+      const snow = snowGeometry.attributes.position;
+      for (let index = 0; index < snowCount; index++) {
+        const offset = index * 3;
+        snow.array[offset] += delta * 0.28;
+        snow.array[offset + 1] -= delta * (0.8 + (index % 7) * 0.09);
+        snow.array[offset + 2] += delta * 0.12;
+        if (snow.array[offset + 1] < 0.15) {
+          snow.array[offset] = 4.3 + random() * 25;
+          snow.array[offset + 1] = 12 + random() * 2;
+          snow.array[offset + 2] = (random() - 0.5) * 19;
+        }
+      }
+      snow.needsUpdate = true;
+      for (const light of ceilingLights) light.intensity = ceilingLightConfig.intensity;
+      ceilingFixtureMaterial.emissiveIntensity = 1.5;
+      renderer.render(scene, camera);
+    };
+    requestAnimationFrame(animate);
+
+    let previousSettingsFocus = null;
+    const selectSettingsTab = (selectedTab) => {
+      const selectedPanelId = selectedTab.getAttribute("aria-controls");
+      for (const tab of settingsTabs) {
+        const isSelected = tab === selectedTab;
+        tab.setAttribute("aria-selected", String(isSelected));
+        tab.tabIndex = isSelected ? 0 : -1;
+      }
+      for (const panel of settingsPanels) panel.hidden = panel.id !== selectedPanelId;
+    };
+    const openSettings = () => {
+      if (settingsOpen) return;
+      settingsReturnToGame = startScreen.classList.contains("is-hidden") || fallbackLook ||
+        document.pointerLockElement === renderer.domElement;
+      settingsOpen = true;
+      keys.clear();
+      settingsScreen.classList.remove("is-hidden");
+      previousSettingsFocus = document.activeElement;
+      settingsTabs.find((tab) => tab.getAttribute("aria-selected") === "true").focus();
+      if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+    };
+    const closeSettings = () => {
+      if (!settingsOpen) return;
+      settingsOpen = false;
+      settingsScreen.classList.add("is-hidden");
+      if (previousSettingsFocus && typeof previousSettingsFocus.focus === "function") previousSettingsFocus.focus();
+      if (settingsReturnToGame) {
+        if (typeof renderer.domElement.requestPointerLock === "function") {
+          renderer.domElement.requestPointerLock();
+        } else {
+          fallbackLook = true;
+        }
+      }
+      settingsReturnToGame = false;
+    };
+
+    const applyGraphicsSettings = () => {
+      const performance = graphicsSettings.performance;
+      const shadersEnabled = graphicsSettings.shaders && !performance;
+      const shadowsEnabled = graphicsSettings.shadows && !performance;
+      const fogEnabled = graphicsSettings.fog && !performance;
+      const grainEnabled = graphicsSettings.grain && !performance;
+
+      if (surfaceShadersEnabled !== shadersEnabled) {
+        surfaceShadersEnabled = shadersEnabled;
+        for (const material of surfaceShaderMaterials) material.needsUpdate = true;
+      }
+      if (renderer.shadowMap.enabled !== shadowsEnabled) {
+        renderer.shadowMap.enabled = shadowsEnabled;
+        renderer.shadowMap.needsUpdate = true;
+      }
+      scene.fog = fogEnabled ? roomFog : null;
+      grainOverlay.classList.toggle("is-disabled", !grainEnabled);
+      const pixelRatio = getPixelRatio();
+      if (renderer.getPixelRatio() !== pixelRatio) {
+        renderer.setPixelRatio(pixelRatio);
+        renderer.setSize(innerWidth, innerHeight);
+      }
+
+      for (const toggle of document.querySelectorAll(".setting-toggle")) {
+        const setting = toggle.dataset.setting;
+        const enabled = setting === "performance"
+          ? performance
+          : graphicsSettings[setting] && !performance;
+        toggle.setAttribute("aria-pressed", String(enabled));
+      }
+    };
+
+    for (const tab of settingsTabs) {
+      tab.addEventListener("click", () => selectSettingsTab(tab));
+      tab.addEventListener("keydown", (event) => {
+        const currentIndex = settingsTabs.indexOf(tab);
+        let nextIndex = currentIndex;
+        if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % settingsTabs.length;
+        else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + settingsTabs.length) % settingsTabs.length;
+        else if (event.key === "Home") nextIndex = 0;
+        else if (event.key === "End") nextIndex = settingsTabs.length - 1;
+        else return;
+        event.preventDefault();
+        settingsTabs[nextIndex].focus();
+        selectSettingsTab(settingsTabs[nextIndex]);
+      });
+    }
+
+    for (const toggle of document.querySelectorAll(".setting-toggle")) {
+      toggle.addEventListener("click", () => {
+        const enabled = toggle.getAttribute("aria-pressed") !== "true";
+        const setting = toggle.dataset.setting;
+        if (setting === "performance") {
+          graphicsSettings.performance = enabled;
+        } else {
+          graphicsSettings.performance = false;
+          graphicsSettings[setting] = enabled;
+        }
+        applyGraphicsSettings();
+      });
+    }
+
+    sensitivityInput.addEventListener("input", () => {
+      mouseSensitivity = Number(sensitivityInput.value);
+      sensitivityValue.value = `${mouseSensitivity.toFixed(1)}×`;
+    });
+    volumeInput.value = String(Math.round(audioVolume * 100));
+    volumeValue.value = `${volumeInput.value}%`;
+    ambience.volume = audioVolume;
+    volumeInput.addEventListener("input", () => {
+      audioVolume = Number(volumeInput.value) / 100;
+      ambience.volume = audioVolume;
+      volumeValue.value = `${volumeInput.value}%`;
+    });
+    settingsCloseButton.addEventListener("click", closeSettings);
+    settingsDoneButton.addEventListener("click", closeSettings);
+
+    enterButton.addEventListener("click", () => {
+      ambience.volume = audioVolume;
+      ambience.play().catch((error) => {
+        console.error("Could not start the background music.", error);
+        loadingLabel.textContent = CONFIG.intro.audioErrorLabel;
+      });
+      if (typeof renderer.domElement.requestPointerLock === "function") {
+        renderer.domElement.requestPointerLock();
+      } else {
+        fallbackLook = true;
+        startScreen.classList.add("is-hidden");
+      }
+    });
+    document.addEventListener("pointerlockchange", () => {
+      const isLocked = document.pointerLockElement === renderer.domElement;
+      if (isLocked) fallbackLook = false;
+      if (!settingsOpen) startScreen.classList.toggle("is-hidden", isLocked || fallbackLook);
+    });
+    document.addEventListener("pointerlockerror", (event) => {
+      console.warn("Pointer lock is unavailable; using mouse-look without pointer capture.", event);
+      fallbackLook = true;
+      if (!settingsOpen) startScreen.classList.add("is-hidden");
+    });
+    document.addEventListener("mousemove", (event) => {
+      if (settingsOpen) return;
+      if (document.pointerLockElement !== renderer.domElement && !fallbackLook) return;
+      yaw -= event.movementX * 0.0022 * mouseSensitivity;
+      pitch = THREE.MathUtils.clamp(pitch - event.movementY * 0.002 * mouseSensitivity, -1.35, 1.35);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (controls.settings.includes(event.code) && !event.repeat) {
+        event.preventDefault();
+        if (settingsOpen) closeSettings();
+        else openSettings();
+        return;
+      }
+      if (settingsOpen) {
+        if (controls.closeSettings.includes(event.code)) {
+          event.preventDefault();
+          closeSettings();
+        } else if (event.key === "Tab") {
+          const focusable = [...settingsScreen.querySelectorAll("button:not([disabled]), input:not([disabled])")];
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+        return;
+      }
+      if (controls.interact.includes(event.code)) {
+        return;
+      }
+      keys.add(event.code);
+      if (!event.repeat && (document.pointerLockElement === renderer.domElement || fallbackLook)) {
+        if (controls.torch.includes(event.code)) {
+          torchOn = !torchOn;
+          torch.visible = torchOn;
+          torchCore.visible = torchOn;
+        } else if (controls.zoom.includes(event.code)) {
+          zoomLevel = zoomLevel >= 3 ? 1 : zoomLevel + 1;
+        }
+      }
+      const configuredKeys = [
+        ...Object.values(controls.movement).flat(),
+        ...controls.crouch,
+        ...controls.interact,
+        ...controls.torch,
+        ...controls.zoom,
+      ];
+      if (event.code === "Space" || configuredKeys.includes(event.code)) event.preventDefault();
+    });
+    document.addEventListener("keyup", (event) => {
+      keys.delete(event.code);
+    });
+    window.addEventListener("blur", () => keys.clear());
+    window.addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.setPixelRatio(getPixelRatio());
+    });
+
+    modelsReady.then(async () => {
+      torch.visible = true;
+      torchCore.visible = true;
+      try {
+        await renderer.compileAsync(scene, camera);
+        renderer.render(scene, camera);
+      } catch (error) {
+        console.error("Could not precompile torch lighting.", error);
+      } finally {
+        torch.visible = false;
+        torchCore.visible = false;
+        enterButton.disabled = false;
+        loadingLabel.textContent = CONFIG.intro.readyLabel;
+      }
+    });
+  </script>
+</body>
+</html>
