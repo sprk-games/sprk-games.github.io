@@ -78,6 +78,29 @@
       pointer-events: none;
     }
 
+    .flashlight-status {
+      position: fixed;
+      z-index: 3;
+      inset: auto auto 26px 34px;
+      width: 176px;
+      padding: 11px 13px;
+      border: 1px solid rgba(215, 196, 184, .2);
+      background: rgba(8, 7, 8, .76);
+      color: rgba(230, 221, 211, .78);
+      font-size: 9px;
+      letter-spacing: .12em;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+    }
+
+    .flashlight-status[hidden] { display: none; }
+    .flashlight-status-line { display: flex; justify-content: space-between; gap: 12px; }
+    .flashlight-status-line span:last-child { color: #d7c6ba; font-variant-numeric: tabular-nums; }
+    .flashlight-battery-track { height: 3px; margin-top: 8px; overflow: hidden; background: rgba(230, 221, 211, .14); }
+    .flashlight-battery-fill { display: block; width: 100%; height: 100%; background: #d7c6ba; transition: width .2s, background-color .2s; }
+    .flashlight-status.is-low .flashlight-battery-fill { background: #c17a6b; }
+    .flashlight-status.is-empty .flashlight-status-line span:last-child { color: #c17a6b; }
+
     .world-prompt {
       position: fixed;
       z-index: 3;
@@ -331,6 +354,30 @@
     .setting-range-wrap { display: flex; min-width: 180px; align-items: center; gap: 12px; }
     .setting-range { width: 130px; accent-color: #a94b40; cursor: pointer; }
     .setting-value { min-width: 38px; color: #d18a78; font-size: 10px; text-align: right; }
+    .developer-form { display: flex; gap: 8px; margin-top: 16px; }
+    .developer-input {
+      flex: 1;
+      min-width: 0;
+      padding: 11px 12px;
+      border: 1px solid rgba(215, 196, 184, .22);
+      background: rgba(0, 0, 0, .35);
+      color: #e6ddd3;
+      font: inherit;
+      font-size: 12px;
+    }
+    .developer-input:focus-visible { outline: 2px solid #d18a78; outline-offset: 2px; }
+    .developer-submit {
+      padding: 10px 14px;
+      border: 1px solid rgba(161, 75, 64, .6);
+      background: rgba(116, 35, 32, .15);
+      color: #e6ddd3;
+      cursor: pointer;
+      font: inherit;
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .developer-output { min-height: 18px; margin: 12px 0 0; color: #d18a78; font-size: 10px; }
     .settings-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid rgba(230, 221, 211, .1); color: rgba(230, 221, 211, .42); font-size: 9px; letter-spacing: .08em; }
     .settings-done { padding: 10px 16px; border: 1px solid rgba(161, 75, 64, .6); background: rgba(116, 35, 32, .15); color: #e6ddd3; cursor: pointer; font: inherit; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; }
     .grain.is-disabled { opacity: 0; }
@@ -349,6 +396,7 @@
     @media (max-width: 600px) {
       .topbar { inset: 20px 18px auto; }
       .bottom-note { inset: auto 18px 18px auto; }
+      .flashlight-status { inset: auto auto 18px 18px; width: 148px; }
       .description { font-size: 13px; }
       .intro { padding: 34px 18px 26px; }
       .subtitle { font-size: 8px; line-height: 1.8; }
@@ -360,6 +408,8 @@
       .settings-content { padding: 18px 0; }
       .setting-range-wrap { min-width: 145px; }
       .setting-range { width: 95px; }
+      .developer-form { flex-wrap: wrap; }
+      .developer-submit { flex: 1 0 100%; }
     }
   </style>
   <script type="importmap">
@@ -379,6 +429,16 @@
   </header>
   <div class="crosshair" aria-hidden="true"></div>
   <div class="world-prompt" id="world-prompt" role="status" aria-live="polite" hidden></div>
+  <aside class="flashlight-status" id="flashlight-status" aria-label="Flashlight battery" hidden>
+    <div class="flashlight-status-line">
+      <span id="flashlight-state">FLASHLIGHT OFF</span>
+      <span id="flashlight-battery-value">100%</span>
+    </div>
+    <div class="flashlight-battery-track" role="progressbar" aria-label="Flashlight battery"
+      aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+      <span class="flashlight-battery-fill" id="flashlight-battery-fill"></span>
+    </div>
+  </aside>
   <footer class="bottom-note">
     <span id="settings-shortcut-hint"></span>
   </footer>
@@ -413,6 +473,7 @@
         <nav class="settings-tabs" role="tablist" aria-label="Settings categories">
           <button class="settings-tab" id="tab-functions" type="button" role="tab" aria-selected="true" aria-controls="panel-functions">Key functions</button>
           <button class="settings-tab" id="tab-game" type="button" role="tab" aria-selected="false" aria-controls="panel-game" tabindex="-1">Game settings</button>
+          <button class="settings-tab" id="tab-developer" type="button" role="tab" aria-selected="false" aria-controls="panel-developer" tabindex="-1">Developer</button>
         </nav>
         <div class="settings-content">
           <section id="panel-functions" role="tabpanel" aria-labelledby="tab-functions">
@@ -422,7 +483,7 @@
               <dt>Move</dt><dd data-key-mapping="movement"></dd>
               <dt>Look around</dt><dd><kbd>Mouse</kbd></dd>
               <dt>Use room controls</dt><dd data-key-mapping="interact"></dd>
-              <dt>Toggle torch</dt><dd data-key-mapping="torch"></dd>
+              <dt>Toggle flashlight</dt><dd data-key-mapping="flashlight"></dd>
               <dt>Crouch</dt><dd data-key-mapping="crouch"></dd>
               <dt>Cycle zoom</dt><dd data-key-mapping="zoom"></dd>
               <dt>Open / close settings</dt><dd data-key-mapping="settings"></dd>
@@ -466,6 +527,15 @@
               </div>
             </div>
           </section>
+          <section id="panel-developer" role="tabpanel" aria-labelledby="tab-developer" hidden>
+            <h3>Developer commands</h3>
+            <p class="settings-hint">Enter a configured command to change the room.</p>
+            <form class="developer-form" id="developer-form">
+              <input class="developer-input" id="developer-input" type="text" autocomplete="off" spellcheck="false" aria-label="Developer command">
+              <button class="developer-submit" type="submit">Run command</button>
+            </form>
+            <p class="developer-output" id="developer-output" role="status" aria-live="polite"></p>
+          </section>
         </div>
       </div>
       <footer class="settings-footer">
@@ -493,10 +563,18 @@
     const settingsPanels = [...document.querySelectorAll('[role="tabpanel"]')];
     const grainOverlay = document.querySelector(".grain");
     const worldPrompt = document.querySelector("#world-prompt");
+    const flashlightStatus = document.querySelector("#flashlight-status");
+    const flashlightState = document.querySelector("#flashlight-state");
+    const flashlightBatteryValue = document.querySelector("#flashlight-battery-value");
+    const flashlightBatteryTrack = flashlightStatus.querySelector('[role="progressbar"]');
+    const flashlightBatteryFill = document.querySelector("#flashlight-battery-fill");
     const sensitivityInput = document.querySelector("#sensitivity");
     const sensitivityValue = document.querySelector("#sensitivity-value");
     const volumeInput = document.querySelector("#volume");
     const volumeValue = document.querySelector("#volume-value");
+    const developerForm = document.querySelector("#developer-form");
+    const developerInput = document.querySelector("#developer-input");
+    const developerOutput = document.querySelector("#developer-output");
     const controls = CONFIG.controls;
     const keyLabel = (code) => {
       if (code.startsWith("Key")) return code.slice(3);
@@ -521,7 +599,7 @@
       document.querySelector('[data-key-mapping="movement"]').appendChild(alternateLabel);
       appendKeyLabels(document.querySelector('[data-key-mapping="movement"]'), movementAlternates);
     }
-    for (const controlName of ["interact", "torch", "crouch", "zoom", "settings"]) {
+    for (const controlName of ["interact", "flashlight", "crouch", "zoom", "settings"]) {
       appendKeyLabels(document.querySelector(`[data-key-mapping="${controlName}"]`), controls[controlName]);
     }
     const settingsShortcutHint = document.querySelector("#settings-shortcut-hint");
@@ -535,7 +613,6 @@
       appendKeyLabels(settingsCloseHint, controls.closeSettings);
     }
     settingsCloseHint.append(" to close");
-
     document.title = CONFIG.game.pageTitle;
     mount.setAttribute("aria-label", `${CONFIG.station.name} broadcast room`);
     document.querySelector(".brand strong").textContent = CONFIG.game.name;
@@ -597,55 +674,119 @@
     renderer.toneMappingExposure = 1.12;
     mount.appendChild(renderer.domElement);
 
-    const torchConfig = CONFIG.scene.lighting.torch;
-    const torch = new THREE.SpotLight(
-      torchConfig.color,
-      torchConfig.intensity,
-      torchConfig.distance,
-      torchConfig.angle,
-      torchConfig.penumbra,
-      torchConfig.decay
+    const flashlightConfig = CONFIG.scene.lighting.flashlight;
+    const flashlight = new THREE.SpotLight(
+      flashlightConfig.color,
+      flashlightConfig.intensity,
+      flashlightConfig.distance,
+      flashlightConfig.angle,
+      flashlightConfig.penumbra,
+      flashlightConfig.decay
     );
-    torch.layers.enable(outdoorLayer);
-    torch.position.fromArray(torchConfig.position);
-    torch.castShadow = true;
-    torch.shadow.mapSize.set(512, 512);
-    torch.shadow.camera.near = 0.1;
-    torch.shadow.camera.far = torchConfig.distance;
-    torch.shadow.camera.fov = THREE.MathUtils.radToDeg(torch.angle * 2);
-    torch.shadow.bias = -0.0001;
-    torch.shadow.normalBias = 0.025;
-    torch.shadow.radius = 3;
-    torch.visible = false;
-    torch.target.position.copy(torch.position);
-    torch.target.position.z -= 1;
-    camera.add(torch, torch.target);
+    flashlight.position.set(0.34, -0.26, -0.95);
+    flashlight.layers.enable(outdoorLayer);
+    flashlight.castShadow = true;
+    flashlight.shadow.mapSize.set(1024, 1024);
+    flashlight.shadow.camera.near = 0.1;
+    flashlight.shadow.camera.far = flashlightConfig.distance;
+    flashlight.shadow.bias = -0.0001;
+    flashlight.shadow.normalBias = 0.025;
+    flashlight.shadow.radius = 3;
+    flashlight.visible = false;
+    const flashlightHotspot = new THREE.SpotLight(
+      flashlightConfig.color,
+      flashlightConfig.hotspotIntensity,
+      flashlightConfig.hotspotDistance,
+      flashlightConfig.hotspotAngle,
+      flashlightConfig.hotspotPenumbra,
+      flashlightConfig.decay
+    );
+    flashlightHotspot.position.copy(flashlight.position);
+    flashlightHotspot.layers.enable(outdoorLayer);
+    flashlightHotspot.visible = false;
+    const flashlightTarget = new THREE.Object3D();
+    flashlightTarget.position.set(0.08, -0.05, -4);
+    camera.add(flashlight, flashlightHotspot, flashlightTarget);
+    flashlight.target = flashlightTarget;
+    flashlightHotspot.target = flashlightTarget;
 
-    const torchCore = new THREE.SpotLight(
-      torchConfig.color,
-      torchConfig.coreIntensity,
-      torchConfig.coreDistance,
-      torchConfig.coreAngle,
-      torchConfig.corePenumbra,
-      torchConfig.decay
+    const flashlightModel = new THREE.Group();
+    flashlightModel.position.set(0.34, -0.28, -0.72);
+    flashlightModel.rotation.set(-0.08, 0, -0.42);
+    camera.add(flashlightModel);
+    const flashlightBodyMaterial = new THREE.MeshStandardMaterial({
+      color: 0x171a1c,
+      metalness: 0.78,
+      roughness: 0.3
+    });
+    const flashlightBezelMaterial = new THREE.MeshStandardMaterial({
+      color: 0x303234,
+      metalness: 0.86,
+      roughness: 0.24
+    });
+    const flashlightLensMaterial = new THREE.MeshBasicMaterial({ color: 0x34312b });
+    const flashlightBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.038, 0.047, 0.3, 20),
+      flashlightBodyMaterial
     );
-    torchCore.layers.enable(outdoorLayer);
-    torchCore.position.fromArray(torchConfig.position);
-    torchCore.target.position.copy(torchCore.position);
-    torchCore.target.position.z -= 1;
-    torchCore.visible = false;
-    camera.add(torchCore, torchCore.target);
+    flashlightBody.rotation.x = -Math.PI / 2;
+    flashlightBody.position.z = -0.02;
+    flashlightModel.add(flashlightBody);
+    const flashlightHead = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.066, 0.045, 0.07, 24),
+      flashlightBezelMaterial
+    );
+    flashlightHead.rotation.x = -Math.PI / 2;
+    flashlightHead.position.z = -0.19;
+    flashlightModel.add(flashlightHead);
+    const flashlightLens = new THREE.Mesh(
+      new THREE.CircleGeometry(0.052, 24),
+      flashlightLensMaterial
+    );
+    flashlightLens.position.z = -0.228;
+    flashlightModel.add(flashlightLens);
+    const flashlightGrip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.048, 0.048, 0.11, 20),
+      new THREE.MeshStandardMaterial({ color: 0x25282a, metalness: 0.35, roughness: 0.72 })
+    );
+    flashlightGrip.rotation.x = -Math.PI / 2;
+    flashlightGrip.position.z = 0.09;
+    flashlightModel.add(flashlightGrip);
+    let flashlightOn = false;
+    let flashlightBattery = 100;
+    let flashlightBatteryDepleting = true;
+    let displayedBattery = -1;
+    const updateFlashlightStatus = () => {
+      const batteryPercent = Math.ceil(flashlightBattery);
+      const isEmpty = flashlightBattery <= 0;
+      flashlightState.textContent = isEmpty
+        ? "FLASHLIGHT EMPTY"
+        : (flashlightOn ? "FLASHLIGHT ON" : "FLASHLIGHT OFF");
+      flashlightBatteryValue.textContent = `${batteryPercent}%`;
+      flashlightBatteryTrack.setAttribute("aria-valuenow", String(batteryPercent));
+      flashlightBatteryTrack.setAttribute("aria-valuetext", `${batteryPercent}%`);
+      flashlightBatteryFill.style.width = `${batteryPercent}%`;
+      flashlightStatus.classList.toggle("is-low", batteryPercent < 50);
+      flashlightStatus.classList.toggle("is-empty", isEmpty);
+      displayedBattery = batteryPercent;
+    };
+    const setFlashlightOn = (enabled) => {
+      flashlightOn = enabled && flashlightBattery > 0;
+      flashlight.visible = flashlightOn;
+      flashlightHotspot.visible = flashlightOn;
+      flashlightLensMaterial.color.setHex(flashlightOn ? 0xfff0d7 : 0x34312b);
+      updateFlashlightStatus();
+    };
+    updateFlashlightStatus();
+
     scene.add(camera);
-    let torchOn = false;
 
-    const ambientLight = new THREE.HemisphereLight(0x283b53, 0x100d12, 0.3);
-    ambientLight.layers.enable(outdoorLayer);
-    scene.add(ambientLight);
+    const outsideLighting = CONFIG.scene.lighting.outside;
     const ceilingLights = [];
     const ceilingFixtureMaterial = new THREE.MeshStandardMaterial({
       color: 0xf2e5ca,
       emissive: 0xffdca8,
-      emissiveIntensity: 1.5,
+      emissiveIntensity: CONFIG.scene.lighting.ceiling.fixtureEmissiveIntensity,
       roughness: 0.38,
       metalness: 0.04
     });
@@ -665,13 +806,14 @@
       metalness: 0.12
     });
     const ceilingLightConfig = CONFIG.scene.lighting.ceiling;
+    let extraLightingEnabled = false;
     const ceilingLightMaterial = new THREE.PointLight(
       ceilingLightConfig.color,
       ceilingLightConfig.intensity,
       ceilingLightConfig.distance,
       ceilingLightConfig.decay
     );
-    for (const [x, z] of CONFIG.scene.room.ceilingLights) {
+    for (const [x, z] of [...CONFIG.scene.room.ceilingLights, [-7, 8.8]]) {
       const fixture = new THREE.Group();
       fixture.position.set(x, 0, z);
       scene.add(fixture);
@@ -946,12 +1088,133 @@
     secondRoomCeiling.receiveShadow = true;
     scene.add(secondRoomCeiling);
 
-    addWall(9, 3.4, -4, 1.7, secondRoomCenterZ, Math.PI / 2);
+    const breakRoomWalls = [
+      { size: [2.35, 3.4], position: [-4, 1.7, 6.775], rotationY: Math.PI / 2 },
+      { size: [2.35, 3.4], position: [-4, 1.7, 10.825], rotationY: Math.PI / 2 },
+      { size: [1.7, 0.95], position: [-4, 2.925, 8.8], rotationY: Math.PI / 2 },
+      { size: [6, 3.4], position: [-7, 1.7, 5.6], rotationY: 0 },
+      { size: [6, 3.4], position: [-7, 1.7, 12], rotationY: 0 },
+      { size: [6.4, 3.4], position: [-10, 1.7, 8.8], rotationY: Math.PI / 2 },
+    ];
+    for (const wall of breakRoomWalls) {
+      addWall(...wall.size, ...wall.position, wall.rotationY);
+    }
     addWall(9, 3.4, 4, 1.7, secondRoomCenterZ, -Math.PI / 2);
     addWall(8, 3.4, 0, 1.7, 13.5);
-    addWainscot(9, -3.96, secondRoomCenterZ, Math.PI / 2);
+    addWainscot(2.35, -3.96, 6.775, Math.PI / 2);
+    addWainscot(2.35, -3.96, 10.825, Math.PI / 2);
     addWainscot(9, 3.96, secondRoomCenterZ, -Math.PI / 2);
     addWainscot(8, 0, 13.46, 0);
+
+    const breakRoomFloor = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 6.4),
+      floor.material
+    );
+    breakRoomFloor.rotation.x = -Math.PI / 2;
+    breakRoomFloor.position.set(-7, 0, 8.8);
+    breakRoomFloor.receiveShadow = true;
+    scene.add(breakRoomFloor);
+
+    const breakRoomCeiling = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 6.4),
+      ceiling.material
+    );
+    breakRoomCeiling.rotation.x = Math.PI / 2;
+    breakRoomCeiling.position.set(-7, 3.4, 8.8);
+    breakRoomCeiling.receiveShadow = true;
+    scene.add(breakRoomCeiling);
+
+    addWainscot(6, -7, 5.56, 0);
+    addWainscot(6, -7, 11.96, 0);
+    addWainscot(6.4, -9.96, 8.8, Math.PI / 2);
+
+    for (const [width, depth, x, y, z] of [
+      [5.92, 0.13, -7, 3.34, 5.6],
+      [5.92, 0.13, -7, 3.34, 12],
+      [0.13, 6.32, -10, 3.34, 8.8],
+    ]) {
+      const trim = new THREE.Mesh(
+        new THREE.BoxGeometry(width, 0.09, depth),
+        ceilingTrimMaterial
+      );
+      trim.position.set(x, y, z);
+      trim.castShadow = true;
+      trim.receiveShadow = true;
+      scene.add(trim);
+    }
+
+    const breakRoomFurniture = [];
+    const breakRoomWoodMaterial = new THREE.MeshStandardMaterial({
+      map: woodTexture,
+      color: 0x866342,
+      roughness: 0.78
+    });
+    const breakRoomMetalMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4a4b48,
+      metalness: 0.58,
+      roughness: 0.48
+    });
+    const makeFurnitureGroup = (position) => {
+      const group = new THREE.Group();
+      group.position.set(...position);
+      scene.add(group);
+      breakRoomFurniture.push(group);
+      return group;
+    };
+    const addFurniturePart = (parent, size, position, material) => {
+      const part = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+      part.position.set(...position);
+      part.castShadow = true;
+      part.receiveShadow = true;
+      parent.add(part);
+      return part;
+    };
+
+    const coffeeCounter = makeFurnitureGroup([-9.15, 0, 7]);
+    addFurniturePart(coffeeCounter, [1.25, 0.82, 2.2], [0, 0.41, 0], breakRoomMetalMaterial);
+    addFurniturePart(coffeeCounter, [1.38, 0.1, 2.32], [0, 0.87, 0], breakRoomWoodMaterial);
+
+    const breakRoomTable = makeFurnitureGroup([-6.6, 0, 10.15]);
+    addFurniturePart(breakRoomTable, [1.55, 0.12, 1.35], [0, 0.76, 0], breakRoomWoodMaterial);
+    for (const x of [-0.66, 0.66]) {
+      for (const z of [-0.56, 0.56]) {
+        addFurniturePart(breakRoomTable, [0.09, 0.72, 0.09], [x, 0.36, z], breakRoomMetalMaterial);
+      }
+    }
+
+    for (const position of [[-5.3, 0, 10.15], [-7.9, 0, 10.15]]) {
+      const chair = makeFurnitureGroup(position);
+      addFurniturePart(chair, [0.48, 0.12, 0.48], [0, 0.48, 0], breakRoomWoodMaterial);
+      addFurniturePart(chair, [0.48, 0.62, 0.1], [0, 0.79, -0.19], breakRoomWoodMaterial);
+      for (const x of [-0.18, 0.18]) {
+        for (const z of [-0.17, 0.17]) {
+          addFurniturePart(chair, [0.055, 0.48, 0.055], [x, 0.24, z], breakRoomMetalMaterial);
+        }
+      }
+    }
+
+    const breakRoomSign = document.createElement("canvas");
+    breakRoomSign.width = 512;
+    breakRoomSign.height = 128;
+    const breakRoomSignContext = breakRoomSign.getContext("2d");
+    breakRoomSignContext.fillStyle = "#342c23";
+    breakRoomSignContext.fillRect(0, 0, breakRoomSign.width, breakRoomSign.height);
+    breakRoomSignContext.strokeStyle = "#b99b6b";
+    breakRoomSignContext.lineWidth = 6;
+    breakRoomSignContext.strokeRect(8, 8, breakRoomSign.width - 16, breakRoomSign.height - 16);
+    breakRoomSignContext.fillStyle = "#ead9b4";
+    breakRoomSignContext.font = "bold 42px sans-serif";
+    breakRoomSignContext.textAlign = "center";
+    breakRoomSignContext.textBaseline = "middle";
+    breakRoomSignContext.fillText("STAFF BREAK ROOM", 256, 64);
+    const breakRoomSignTexture = new THREE.CanvasTexture(breakRoomSign);
+    breakRoomSignTexture.colorSpace = THREE.SRGBColorSpace;
+    const breakRoomSignMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.1, 0.53),
+      new THREE.MeshStandardMaterial({ map: breakRoomSignTexture, roughness: 0.76 })
+    );
+    breakRoomSignMesh.position.set(-7, 2.55, 11.96);
+    scene.add(breakRoomSignMesh);
 
     for (const [width, depth, x, y, z] of [
       [7.92, 0.13, 0, 3.34, 4.42],
@@ -1012,25 +1275,305 @@
       scene.add(crate);
     }
 
-    const transmitterConsole = new THREE.Mesh(
-      new THREE.BoxGeometry(3.6, 1.12, 0.62),
-      storageMetalMaterial
+    const steelTexture = loadTexture(
+      CONFIG.textures.steel.color,
+      ...CONFIG.textures.steel.repeat
     );
-    transmitterConsole.position.set(0, 0.72, 12.35);
-    transmitterConsole.castShadow = true;
-    transmitterConsole.receiveShadow = true;
-    scene.add(transmitterConsole);
-    const consoleFace = new THREE.Mesh(
-      new THREE.BoxGeometry(3.3, 0.44, 0.035),
+    const steelNormal = loadSurfaceMap(
+      CONFIG.textures.steel.normal,
+      ...CONFIG.textures.steel.repeat
+    );
+    const steelMetallic = loadSurfaceMap(
+      CONFIG.textures.steel.metallic,
+      ...CONFIG.textures.steel.repeat
+    );
+    const steelRoughness = loadSurfaceMap(
+      CONFIG.textures.steel.roughness,
+      ...CONFIG.textures.steel.repeat
+    );
+    const broadcastSteelMaterial = addSurfaceGrain(new THREE.MeshPhysicalMaterial({
+      map: steelTexture,
+      normalMap: steelNormal,
+      metalnessMap: steelMetallic,
+      roughnessMap: steelRoughness,
+      color: 0xc4c7c4,
+      metalness: 0.9,
+      roughness: 0.28,
+      envMapIntensity: 1.45,
+      normalScale: new THREE.Vector2(0.72, 0.72),
+      clearcoat: 0.28,
+      clearcoatRoughness: 0.2
+    }), 0.018);
+    const rackEnamelMaterial = addSurfaceGrain(new THREE.MeshPhysicalMaterial({
+      map: steelTexture,
+      normalMap: steelNormal,
+      metalnessMap: steelMetallic,
+      roughnessMap: steelRoughness,
+      color: 0x555a57,
+      metalness: 0.78,
+      roughness: 0.3,
+      envMapIntensity: 1.35,
+      normalScale: new THREE.Vector2(0.62, 0.62),
+      clearcoat: 0.36,
+      clearcoatRoughness: 0.22
+    }), 0.012);
+    const rackScreenMaterials = [
       new THREE.MeshStandardMaterial({
-        color: 0x242726,
-        emissive: 0x15312c,
-        emissiveIntensity: 0.35,
-        roughness: 0.48
+        color: 0x7bb69a,
+        roughness: 0.3
+      }),
+      new THREE.MeshStandardMaterial({
+        color: 0xc28b5a,
+        roughness: 0.32
       })
+    ];
+    const rackControlMaterial = new THREE.MeshStandardMaterial({
+      color: 0x474945,
+      metalness: 0.78,
+      roughness: 0.3
+    });
+    const rackAccentMaterial = new THREE.MeshStandardMaterial({
+      color: 0xa18455,
+      metalness: 0.84,
+      roughness: 0.27
+    });
+    const rackFastenerGeometry = new THREE.CylinderGeometry(0.018, 0.018, 0.012, 10);
+    const equipmentCollisionBounds = [];
+    const addEquipmentCollider = (object) => {
+      object.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(object);
+      if (bounds.isEmpty()) return;
+      equipmentCollisionBounds.push({
+        minX: bounds.min.x,
+        maxX: bounds.max.x,
+        minY: bounds.min.y,
+        maxY: bounds.max.y,
+        minZ: bounds.min.z,
+        maxZ: bounds.max.z
+      });
+    };
+    for (const furniture of breakRoomFurniture) {
+      addEquipmentCollider(furniture);
+    }
+    const addEquipmentBox = (width, height, depth, x, y, z, material, parent = scene) => {
+      const part = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+      part.position.set(x, y, z);
+      part.castShadow = true;
+      part.receiveShadow = true;
+      parent.add(part);
+    };
+    const addEquipmentKnob = (x, y, z, radius = 0.045, parent = scene) => {
+      const knob = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius * 1.12, 0.045, 16),
+        rackControlMaterial
+      );
+      knob.rotation.x = Math.PI / 2;
+      knob.position.set(x, y, z);
+      knob.castShadow = true;
+      parent.add(knob);
+      const indicator = new THREE.Mesh(
+        new THREE.BoxGeometry(0.009, radius * 0.72, 0.008),
+        rackAccentMaterial
+      );
+      indicator.position.set(x, y + radius * 0.22, z - 0.027);
+      parent.add(indicator);
+    };
+
+    const transmitterConsole = new THREE.Group();
+    transmitterConsole.position.set(-3.5, 0.7, 11.7);
+    transmitterConsole.rotation.y = -Math.PI / 2;
+    transmitterConsole.scale.set(1.25, 1.25, 1.2);
+    scene.add(transmitterConsole);
+    const addConsoleBox = (width, height, depth, x, y, z, material) => (
+      addEquipmentBox(width, height, depth, x, y, z, material, transmitterConsole)
     );
-    consoleFace.position.set(0, 0.98, 12.02);
-    scene.add(consoleFace);
+    const addConsoleKnob = (x, y, z, radius = 0.045) => (
+      addEquipmentKnob(x, y, z, radius, transmitterConsole)
+    );
+    addConsoleBox(3.6, 1.12, 0.62, 0, 0, 0, broadcastSteelMaterial);
+    addConsoleBox(3.3, 0.44, 0.035, 0, 0.26, -0.33, rackEnamelMaterial);
+    for (let channel = 0; channel < 3; channel++) {
+      const x = (channel - 1) * 1.08;
+      addConsoleBox(0.98, 0.38, 0.025, x, 0.26, -0.362, broadcastSteelMaterial);
+      addConsoleBox(
+        channel === 1 ? 0.62 : 0.43,
+        channel === 1 ? 0.24 : 0.12,
+        0.012,
+        x,
+        channel === 1 ? 0.31 : 0.335,
+        -0.381,
+        rackScreenMaterials[channel === 1 ? 1 : 0]
+      );
+      for (let control = 0; control < 4; control++) {
+        addConsoleKnob(x - 0.34 + control * 0.105, 0.19, -0.392, 0.025);
+      }
+      for (let led = 0; led < 5; led++) {
+        addConsoleBox(
+          0.018,
+          0.035 + (led % 2) * 0.018,
+          0.012,
+          x + 0.1 + led * 0.045,
+          0.19,
+          -0.383,
+          rackScreenMaterials[led < 3 ? 0 : 1]
+        );
+      }
+    }
+    for (let grid = 0; grid < 4; grid++) {
+      const x = -0.23 + grid * 0.15;
+      addConsoleBox(0.006, 0.18, 0.005, x, 0.31, -0.391, rackControlMaterial);
+    }
+    for (let grid = 0; grid < 3; grid++) {
+      addConsoleBox(0.52, 0.006, 0.005, 0, 0.25 + grid * 0.06, -0.391, rackControlMaterial);
+    }
+    const signalTrace = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-0.27, 0.29, -0.398),
+      new THREE.Vector3(-0.19, 0.33, -0.398),
+      new THREE.Vector3(-0.12, 0.28, -0.398),
+      new THREE.Vector3(-0.04, 0.35, -0.398),
+      new THREE.Vector3(0.04, 0.32, -0.398),
+      new THREE.Vector3(0.12, 0.37, -0.398),
+      new THREE.Vector3(0.2, 0.3, -0.398),
+      new THREE.Vector3(0.27, 0.34, -0.398)
+    ]);
+    transmitterConsole.add(new THREE.Line(
+      signalTrace,
+      new THREE.LineBasicMaterial({ color: 0x9dffe0, transparent: true, opacity: 0.95 })
+    ));
+    for (let toggle = 0; toggle < 5; toggle++) {
+      const x = -1.35 + toggle * 0.675;
+      addConsoleBox(0.075, 0.045, 0.035, x, -0.22, -0.36, rackControlMaterial);
+      const lever = new THREE.Mesh(
+        new THREE.BoxGeometry(0.018, 0.12, 0.025),
+        toggle === 2 ? rackAccentMaterial : broadcastSteelMaterial
+      );
+      lever.position.set(x, -0.15 + (toggle % 2) * 0.025, -0.385);
+      lever.rotation.z = toggle % 2 ? -0.22 : 0.22;
+      lever.castShadow = true;
+      transmitterConsole.add(lever);
+    }
+    const valveRingMaterial = new THREE.MeshStandardMaterial({
+      color: 0x9b4935,
+      metalness: 0.72,
+      roughness: 0.34
+    });
+    for (const x of [-1.47, 1.47]) {
+      const valve = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.022, 8, 20), valveRingMaterial);
+      valve.position.set(x, -0.32, -0.375);
+      valve.castShadow = true;
+      transmitterConsole.add(valve);
+      for (let spoke = 0; spoke < 4; spoke++) {
+        const angle = spoke * Math.PI / 4;
+        const handle = new THREE.Mesh(
+          new THREE.BoxGeometry(0.19, 0.018, 0.018),
+          rackAccentMaterial
+        );
+        handle.position.set(x, -0.32, -0.375);
+        handle.rotation.z = angle;
+        transmitterConsole.add(handle);
+      }
+    }
+    addEquipmentCollider(transmitterConsole);
+
+    const rackPositions = [-1.62, 0, 1.62];
+    for (let rackIndex = 0; rackIndex < rackPositions.length; rackIndex++) {
+      const x = rackPositions[rackIndex];
+      const rack = new THREE.Group();
+      rack.position.y = -0.06;
+      scene.add(rack);
+      addEquipmentBox(0.12, 1.82, 0.045, x - 0.36, 1.55, 13.455, broadcastSteelMaterial, rack);
+      addEquipmentBox(0.12, 1.82, 0.045, x + 0.36, 1.55, 13.455, broadcastSteelMaterial, rack);
+      addEquipmentBox(1.16, 0.07, 0.62, x, 0.545, 13.16, broadcastSteelMaterial, rack);
+      for (const side of [-1, 1]) {
+        addEquipmentBox(0.075, 0.06, 0.56, x + side * 0.36, 0.47, 13.16, broadcastSteelMaterial, rack);
+        addEquipmentBox(0.15, 0.36, 0.045, x + side * 0.36, 0.42, 13.455, rackEnamelMaterial, rack);
+        for (const boltY of [0.3, 0.54]) {
+          const anchor = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.027, 0.027, 0.02, 12),
+            rackAccentMaterial
+          );
+          anchor.rotation.x = Math.PI / 2;
+          anchor.position.set(x + side * 0.36, boltY, 13.4225);
+          anchor.castShadow = true;
+          rack.add(anchor);
+        }
+      }
+      addEquipmentBox(1.13, 1.94, 0.54, x, 1.55, 13.16, broadcastSteelMaterial, rack);
+      addEquipmentBox(1.03, 1.78, 0.035, x, 1.55, 12.878, rackEnamelMaterial, rack);
+      for (const side of [-1, 1]) {
+        addEquipmentBox(0.035, 1.68, 0.025, x + side * 0.47, 1.55, 12.85, broadcastSteelMaterial, rack);
+        for (let screw = 0; screw < 8; screw++) {
+          const screwY = 0.79 + screw * 0.215;
+          const fastener = new THREE.Mesh(rackFastenerGeometry, rackAccentMaterial);
+          fastener.rotation.x = Math.PI / 2;
+          fastener.position.set(x + side * 0.47, screwY, 12.829);
+          rack.add(fastener);
+        }
+      }
+
+      for (let unit = 0; unit < 4; unit++) {
+        const y = 0.89 + unit * 0.43;
+        addEquipmentBox(0.84, 0.37, 0.025, x, y, 12.824, rackEnamelMaterial, rack);
+        if (unit === 0) {
+          addEquipmentBox(
+            0.44,
+            0.13,
+            0.012,
+            x,
+            y + 0.04,
+            12.805,
+            rackScreenMaterials[rackIndex === 1 ? 1 : 0],
+            rack
+          );
+          for (let bar = 0; bar < 6; bar++) {
+            addEquipmentBox(
+              0.025,
+              0.035 + (bar % 3) * 0.018,
+              0.009,
+              x - 0.36 + bar * 0.064,
+              y - 0.09,
+              12.802,
+              rackScreenMaterials[bar < 4 ? 0 : 1],
+              rack
+            );
+          }
+          addEquipmentKnob(x + 0.33, y - 0.07, 12.79, 0.035, rack);
+        } else if (unit === 1 && rackIndex === 1) {
+          for (let meter = 0; meter < 2; meter++) {
+            const meterX = x - 0.19 + meter * 0.38;
+            const gauge = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.075, 0.075, 0.018, 24),
+              rackAccentMaterial
+            );
+            gauge.rotation.x = Math.PI / 2;
+            gauge.position.set(meterX, y + 0.015, 12.797);
+            rack.add(gauge);
+            addEquipmentBox(0.09, 0.008, 0.008, meterX, y + 0.035, 12.783, rackScreenMaterials[1], rack);
+          }
+          addEquipmentKnob(x + 0.34, y - 0.09, 12.79, 0.035, rack);
+        } else if (unit === 2 && rackIndex === 2) {
+          for (let vent = 0; vent < 7; vent++) {
+            addEquipmentBox(
+              0.43,
+              0.012,
+              0.012,
+              x - 0.11,
+              y + 0.105 - vent * 0.032,
+              12.802,
+              rackControlMaterial,
+              rack
+            );
+          }
+          addEquipmentKnob(x + 0.34, y - 0.07, 12.79, 0.035, rack);
+        } else {
+          addEquipmentBox(0.42, 0.085, 0.012, x - 0.16, y + 0.035, 12.802, rackControlMaterial, rack);
+          for (let control = 0; control < 3; control++) {
+            addEquipmentKnob(x - 0.21 + control * 0.14, y - 0.1, 12.79, 0.027, rack);
+          }
+        }
+      }
+      addEquipmentCollider(rack);
+    }
 
     const windowSillPanel = new THREE.Mesh(
       new THREE.PlaneGeometry(8.4, 0.48),
@@ -1354,6 +1897,7 @@
       new THREE.MeshBasicMaterial({ color: 0x9caec6 })
     );
     moon.position.set(72, 30, -37);
+    moon.visible = false;
     scene.add(markAsOutdoor(moon));
 
     const starPositions = new Float32Array(180 * 3);
@@ -1364,10 +1908,12 @@
     }
     const starGeometry = new THREE.BufferGeometry();
     starGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
-    scene.add(markAsOutdoor(new THREE.Points(
+    const stars = markAsOutdoor(new THREE.Points(
       starGeometry,
       new THREE.PointsMaterial({ color: 0x515663, size: 0.09, sizeAttenuation: true })
-    )));
+    ));
+    stars.visible = false;
+    scene.add(stars);
 
     const lampPoleMaterial = new THREE.MeshStandardMaterial({ color: 0x343a3b, metalness: 0.72, roughness: 0.38 });
     const lampX = 16;
@@ -1390,7 +1936,7 @@
     );
     lampBulb.position.set(lampX - 1.02, 5.08, lampZ);
     scene.add(markAsOutdoor(lampBulb));
-    const streetLamp = new THREE.PointLight(0xffc77d, 68, 28, 1.8);
+    const streetLamp = new THREE.PointLight(0xffc77d, outsideLighting.streetLampIntensity, 28, 1.8);
     streetLamp.position.set(lampX - 1.02, 5.05, lampZ);
     streetLamp.castShadow = false;
     streetLamp.layers.set(outdoorLayer);
@@ -1431,6 +1977,12 @@
         if (child.isMesh) {
           child.castShadow = true;
           child.receiveShadow = true;
+          for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+            if (material.emissive) {
+              material.emissive.set(0, 0, 0);
+              material.emissiveIntensity = 0;
+            }
+          }
         }
       });
       scene.add(root);
@@ -1441,6 +1993,7 @@
       gltfLoader.load(path, (gltf) => {
         try {
           fitModel(gltf.scene, size, position, rotationY);
+          addEquipmentCollider(gltf.scene);
           resolve(gltf.scene);
         } catch (error) {
           console.error(`Could not place room model: ${path}`, error);
@@ -1453,7 +2006,11 @@
     });
 
     const modelsReady = Promise.all(
-      CONFIG.models.map(({ source, scale, position, rotationY }) => (
+      [...CONFIG.models, {
+        source: "models/coffee_machine.glb",
+        scale: 0.72,
+        position: [-9.12, 0.92, 7],
+      }].map(({ source, scale, position, rotationY }) => (
         loadModel(source, scale, position, rotationY)
       ))
     );
@@ -1466,7 +2023,10 @@
     let yaw = 0;
     let pitch = 0;
     let previousTime = performance.now();
-    const playerConfig = CONFIG.scene.player;
+    const playerConfig = {
+      ...CONFIG.scene.player,
+      roomBounds: { ...CONFIG.scene.player.roomBounds, minX: -9.5 }
+    };
     const playerHeight = playerConfig.height;
     const playerRadius = playerConfig.radius;
     let fallbackLook = false;
@@ -1475,7 +2035,35 @@
     const movement = new THREE.Vector3();
     const clock = new THREE.Clock();
     let lampFlickerUntil = 0;
-    const deskBounds = playerConfig.deskBounds;
+    let isDaytime = false;
+    equipmentCollisionBounds.push({
+      ...playerConfig.deskBounds,
+      minY: 0,
+      maxY: 1.1
+    });
+    const collisionWalls = [...CONFIG.scene.room.walls, ...breakRoomWalls];
+    const overlapsWall = (x, z, playerTop) => collisionWalls.some((wall) => {
+      const [width, height] = wall.size;
+      const [wallX, wallY, wallZ] = wall.position;
+      const wallBottom = wallY - height / 2;
+      const wallTop = wallY + height / 2;
+      if (wallBottom >= playerTop || wallTop <= 0) return false;
+
+      const deltaX = x - wallX;
+      const deltaZ = z - wallZ;
+      const cosine = Math.cos(wall.rotationY);
+      const sine = Math.sin(wall.rotationY);
+      const localX = deltaX * cosine - deltaZ * sine;
+      const localZ = deltaX * sine + deltaZ * cosine;
+      const nearestX = THREE.MathUtils.clamp(localX, -width / 2, width / 2);
+      return (localX - nearestX) ** 2 + localZ ** 2 < playerRadius ** 2;
+    });
+    const overlapsEquipment = (x, z, playerBottom, playerTop) => equipmentCollisionBounds.some((bounds) => {
+      if (bounds.minY >= playerTop || bounds.maxY <= playerBottom) return false;
+      const nearestX = THREE.MathUtils.clamp(x, bounds.minX, bounds.maxX);
+      const nearestZ = THREE.MathUtils.clamp(z, bounds.minZ, bounds.maxZ);
+      return (x - nearestX) ** 2 + (z - nearestZ) ** 2 < playerRadius ** 2;
+    });
 
     const updateCamera = (delta) => {
       camera.rotation.order = "YXZ";
@@ -1501,14 +2089,20 @@
           playerConfig.roomBounds.minZ,
           playerConfig.roomBounds.maxZ
         );
-        const overlapsDesk = (x, z) => (
-          x + playerRadius > deskBounds.minX &&
-          x - playerRadius < deskBounds.maxX &&
-          z + playerRadius > deskBounds.minZ &&
-          z - playerRadius < deskBounds.maxZ
-        );
-        if (!overlapsDesk(nextX, camera.position.z)) camera.position.x = nextX;
-        if (!overlapsDesk(camera.position.x, nextZ)) camera.position.z = nextZ;
+        const playerBottom = camera.position.y - (crouching ? playerConfig.crouchHeight : playerHeight);
+        const playerTop = camera.position.y;
+        if (
+          !overlapsEquipment(nextX, camera.position.z, playerBottom, playerTop) &&
+          !overlapsWall(nextX, camera.position.z, playerTop)
+        ) {
+          camera.position.x = nextX;
+        }
+        if (
+          !overlapsEquipment(camera.position.x, nextZ, playerBottom, playerTop) &&
+          !overlapsWall(camera.position.x, nextZ, playerTop)
+        ) {
+          camera.position.z = nextZ;
+        }
       }
       camera.position.y = THREE.MathUtils.damp(
         camera.position.y,
@@ -1540,10 +2134,34 @@
         camera.updateProjectionMatrix();
       }
       const elapsed = clock.getElapsedTime();
+      if (flashlightOn && flashlightBatteryDepleting) {
+        flashlightBattery = Math.max(
+          0,
+          flashlightBattery - (delta * 100) / flashlightConfig.batteryDurationSeconds
+        );
+        if (flashlightBattery <= 0) setFlashlightOn(false);
+      }
+      if (Math.ceil(flashlightBattery) !== displayedBattery) updateFlashlightStatus();
+      const flashlightOutput = flashlightBattery >= 50
+        ? 1
+        : Math.pow(flashlightBattery / 50, 1.65);
+      flashlight.intensity = flashlightConfig.intensity * flashlightOutput;
+      flashlightHotspot.intensity = flashlightConfig.hotspotIntensity * flashlightOutput;
+      if (flashlightOn) {
+        flashlightLensMaterial.color.setRGB(
+          0.2 + flashlightOutput * 0.8,
+          0.18 + flashlightOutput * 0.72,
+          0.16 + flashlightOutput * 0.58
+        );
+      } else {
+        flashlightLensMaterial.color.setHex(0x34312b);
+      }
       if (random() < delta * 0.75) lampFlickerUntil = elapsed + 0.045 + random() * 0.1;
       const lampFlicker = elapsed < lampFlickerUntil ? 0.08 : (random() < 0.018 ? 0.55 : 1);
-      streetLamp.intensity = 68 * lampFlicker;
-      lampBulb.material.color.setHex(lampFlicker < 0.2 ? 0x625747 : 0xdcb77c);
+      streetLamp.intensity = isDaytime ? 0 : outsideLighting.streetLampIntensity * lampFlicker;
+      lampBulb.material.color.setHex(isDaytime
+        ? 0x746e64
+        : (lampFlicker < 0.2 ? 0x625747 : 0xdcb77c));
       const snow = snowGeometry.attributes.position;
       for (let index = 0; index < snowCount; index++) {
         const offset = index * 3;
@@ -1557,8 +2175,13 @@
         }
       }
       snow.needsUpdate = true;
-      for (const light of ceilingLights) light.intensity = ceilingLightConfig.intensity;
-      ceilingFixtureMaterial.emissiveIntensity = 1.5;
+      const ceilingIntensity = extraLightingEnabled
+        ? ceilingLightConfig.extraIntensity
+        : ceilingLightConfig.intensity;
+      for (const light of ceilingLights) light.intensity = ceilingIntensity;
+      ceilingFixtureMaterial.emissiveIntensity = extraLightingEnabled
+        ? ceilingLightConfig.extraFixtureEmissiveIntensity
+        : ceilingLightConfig.fixtureEmissiveIntensity;
       renderer.render(scene, camera);
     };
     requestAnimationFrame(animate);
@@ -1675,6 +2298,42 @@
     });
     settingsCloseButton.addEventListener("click", closeSettings);
     settingsDoneButton.addEventListener("click", closeSettings);
+    developerForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const command = CONFIG.developer.commands.find(
+        ({ input }) => input.toLowerCase() === developerInput.value.trim().toLowerCase()
+      );
+      if (!command) {
+        developerOutput.textContent = CONFIG.developer.invalidCommandMessage;
+        return;
+      }
+
+      if (command.action === "extraLighting") {
+        extraLightingEnabled = true;
+      } else if (command.action === "normalLighting") {
+        extraLightingEnabled = false;
+      } else if (command.action === "day") {
+        isDaytime = true;
+        scene.background.setHex(outsideLighting.dayBackgroundColor);
+        moon.visible = false;
+        stars.visible = false;
+      } else if (command.action === "night") {
+        isDaytime = false;
+        scene.background.setHex(CONFIG.scene.backgroundColor);
+        moon.visible = true;
+        stars.visible = true;
+      } else if (command.action === "infiniteFlash") {
+        flashlightBatteryDepleting = false;
+      } else if (command.action === "normalFlash") {
+        flashlightBatteryDepleting = true;
+      } else {
+        console.error(`Unsupported developer command action: ${command.action}`);
+        developerOutput.textContent = "This command is not available.";
+        return;
+      }
+      developerOutput.textContent = command.successMessage;
+      developerInput.value = "";
+    });
 
     enterButton.addEventListener("click", () => {
       ambience.volume = audioVolume;
@@ -1687,17 +2346,20 @@
       } else {
         fallbackLook = true;
         startScreen.classList.add("is-hidden");
+        flashlightStatus.hidden = false;
       }
     });
     document.addEventListener("pointerlockchange", () => {
       const isLocked = document.pointerLockElement === renderer.domElement;
       if (isLocked) fallbackLook = false;
       if (!settingsOpen) startScreen.classList.toggle("is-hidden", isLocked || fallbackLook);
+      flashlightStatus.hidden = !(isLocked || fallbackLook);
     });
     document.addEventListener("pointerlockerror", (event) => {
       console.warn("Pointer lock is unavailable; using mouse-look without pointer capture.", event);
       fallbackLook = true;
       if (!settingsOpen) startScreen.classList.add("is-hidden");
+      flashlightStatus.hidden = false;
     });
     document.addEventListener("mousemove", (event) => {
       if (settingsOpen) return;
@@ -1706,7 +2368,11 @@
       pitch = THREE.MathUtils.clamp(pitch - event.movementY * 0.002 * mouseSensitivity, -1.35, 1.35);
     });
     document.addEventListener("keydown", (event) => {
-      if (controls.settings.includes(event.code) && !event.repeat) {
+      const target = event.target;
+      const isTyping = target instanceof HTMLElement && (
+        target.isContentEditable || target.matches("input:not([type='range']), textarea, select")
+      );
+      if (controls.settings.includes(event.code) && !event.repeat && !isTyping) {
         event.preventDefault();
         if (settingsOpen) closeSettings();
         else openSettings();
@@ -1730,16 +2396,16 @@
         }
         return;
       }
+      if (!event.repeat && controls.flashlight.includes(event.code) &&
+        (document.pointerLockElement === renderer.domElement || fallbackLook)) {
+        setFlashlightOn(!flashlightOn);
+      }
       if (controls.interact.includes(event.code)) {
         return;
       }
       keys.add(event.code);
       if (!event.repeat && (document.pointerLockElement === renderer.domElement || fallbackLook)) {
-        if (controls.torch.includes(event.code)) {
-          torchOn = !torchOn;
-          torch.visible = torchOn;
-          torchCore.visible = torchOn;
-        } else if (controls.zoom.includes(event.code)) {
+        if (controls.zoom.includes(event.code)) {
           zoomLevel = zoomLevel >= 3 ? 1 : zoomLevel + 1;
         }
       }
@@ -1747,7 +2413,7 @@
         ...Object.values(controls.movement).flat(),
         ...controls.crouch,
         ...controls.interact,
-        ...controls.torch,
+        ...controls.flashlight,
         ...controls.zoom,
       ];
       if (event.code === "Space" || configuredKeys.includes(event.code)) event.preventDefault();
@@ -1764,16 +2430,12 @@
     });
 
     modelsReady.then(async () => {
-      torch.visible = true;
-      torchCore.visible = true;
       try {
         await renderer.compileAsync(scene, camera);
         renderer.render(scene, camera);
       } catch (error) {
-        console.error("Could not precompile torch lighting.", error);
+        console.error("Could not precompile room lighting.", error);
       } finally {
-        torch.visible = false;
-        torchCore.visible = false;
         enterButton.disabled = false;
         loadingLabel.textContent = CONFIG.intro.readyLabel;
       }
